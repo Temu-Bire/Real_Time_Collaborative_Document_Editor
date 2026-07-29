@@ -6,10 +6,14 @@ const {
 } = require("../controllers/authController");
 
 const authMiddleware = require("../middleware/authMiddleware");
+const {
+  registerValidation,
+  handleValidationErrors,
+} = require("../validators/authValidator");
 
 const router = express.Router();
 
-router.post("/register", register);
+router.post("/register", registerValidation, handleValidationErrors, register);
 router.post("/login", login);
 router.get("/profile", authMiddleware, getProfile);
 
