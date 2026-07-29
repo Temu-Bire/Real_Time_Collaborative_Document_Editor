@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Security and API Credentials (CRITICAL)
+.env
+.env.dev
+.env.prod
+*.pem
+
+# Runtime logs and process managers
+logs
+*.log
+npm-debug.log*
+pm2.log
+
+# Uploads or temporary file directories (if user-submitted)
+public/uploads/
+temp/
+tmp/
