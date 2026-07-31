@@ -8,7 +8,6 @@ const userSchema = new mongoose.Schema(
       minlength: 3,
       maxlength: 30,
       trim: true,
-
     },
 
     email: {
@@ -19,10 +18,49 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
     },
 
+    // Not required for Google OAuth users
     password: {
       type: String,
-      required: true,
-      minlength:8,
+      minlength: 8,
+    },
+
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
+
+    profilePicture: {
+      type: String,
+    },
+
+    // Email verification
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    emailVerificationToken: {
+      type: String,
+    },
+
+    emailVerificationExpires: {
+      type: Date,
+    },
+
+    // Password reset
+    passwordResetToken: {
+      type: String,
+    },
+
+    passwordResetExpires: {
+      type: Date,
     },
   },
   {
