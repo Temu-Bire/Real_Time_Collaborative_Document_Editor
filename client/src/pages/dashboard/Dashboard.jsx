@@ -4,18 +4,19 @@ import Navbar from "../../components/common/Navbar";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import EmptyState from "../../components/common/EmptyState";
 import DocumentCard from "../../components/documents/DocumentCard";
-import CreateDocumentModal from "../../components/documents/CreateDocumentModal";
 import { useDocuments } from "../../context/DocumentContext";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
-  const {
+
+    const {
     documents,
     loading,
     fetchDocuments,
     deleteDocument,
-  } = useDocuments();
+    createDocument,
+    } = useDocuments();
 
-  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     fetchDocuments();
@@ -25,6 +26,19 @@ const Dashboard = () => {
     return <LoadingSpinner />;
   }
 
+    const handleCreateDocument = async () => {
+    try {
+        const document = await createDocument({
+        title: "Untitled Document",
+        content: "",
+        });
+
+        navigate(`/documents/${document._id}`);
+
+    } catch(error){
+        console.error(error);
+    }
+    };
   return (
     <>
       <Navbar />
@@ -37,19 +51,18 @@ const Dashboard = () => {
             My Documents
           </h1>
 
-          <button
-            onClick={() => setShowModal(true)}
+        <button
+            onClick={handleCreateDocument}
             className="bg-indigo-600 text-white px-5 py-3 rounded-lg hover:bg-indigo-700"
-          >
+            >
             + New Document
-          </button>
-
+        </button>
         </div>
 
         {documents.length === 0 ? (
-          <EmptyState
-            onCreate={() => setShowModal(true)}
-          />
+            <EmptyState
+            onCreate={handleCreateDocument}
+            />
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
@@ -63,11 +76,6 @@ const Dashboard = () => {
 
           </div>
         )}
-
-            <CreateDocumentModal
-                isOpen={showModal}
-                onClose={() => setShowModal(false)}
-                />
       </div>
     </>
   );

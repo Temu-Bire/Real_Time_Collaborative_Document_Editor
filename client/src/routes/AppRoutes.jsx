@@ -5,7 +5,7 @@ import Register from "../pages/auth/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 
 import Dashboard from "../pages/dashboard/Dashboard";
-import EditDocument from "../pages/dashboard/EditDocument";
+import DocumentEditor from "../pages/dashboard/DocumentEditor";
 
 import ProtectedRoute from "../components/common/ProtectedRoute";
 
@@ -20,7 +20,7 @@ const AppRoutes = () => {
       {/* Protected Routes */}
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/documents/:id" element={<EditDocument />} />
+        <Route path="/documents/:id" element={<DocumentEditor />} />
       </Route>
 
       {/* 404 */}
