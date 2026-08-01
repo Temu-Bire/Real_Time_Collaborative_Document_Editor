@@ -1,1 +1,58 @@
 @import "tailwindcss";
+
+/* Night Mode (Warm Soft White / Eye-Care Reading Mode) */
+html.night {
+  color-scheme: light;
+  background-color: #faf7f2 !important;
+}
+
+html.night body {
+  background-color: #faf7f2 !important;
+  color: #27272a !important;
+}
+
+html.night .bg-slate-50,
+html.night .bg-slate-100,
+html.night .dark\:bg-slate-900,
+html.night .dark\:bg-slate-900\/90,
+html.night .dark\:bg-slate-900\/80,
+html.night .dark\:bg-slate-900\/60 {
+  background-color: #faf7f2 !important;
+}
+
+html.night .bg-white,
+html.night .dark\:bg-slate-800,
+html.night .dark\:bg-slate-800\/95,
+html.night .dark\:bg-slate-800\/90,
+html.night .dark\:bg-slate-800\/80,
+html.night .dark\:bg-slate-800\/50 {
+  background-color: #ffffff !important;
+}
+
+html.night .border-slate-200,
+html.night .border-slate-300,
+html.night .dark\:border-slate-800,
+html.night .dark\:border-slate-700,
+html.night .dark\:border-slate-700\/80,
+html.night .dark\:border-slate-700\/60 {
+  border-color: #e4e4e7 !important;
+}
+
+html.night .dark\:text-slate-100,
+html.night .dark\:text-slate-200,
+html.night .dark\:text-white {
+  color: #18181b !important;
+}
+
+html.night .dark\:text-slate-400,
+html.night .dark\:text-slate-500 {
+  color: #71717a !important;
+}
+
+html.night input,
+html.night select,
+html.night textarea {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  color: #18181b !important;
+}

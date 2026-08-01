@@ -26,9 +26,9 @@ export const createDocument = async (documentData) => {
   return response.data;
 };
 
-// GET ALL
-export const getDocuments = async () => {
-  const response = await api.get("/");
+// GET ALL (with pagination & search support)
+export const getDocuments = async (params = {}) => {
+  const response = await api.get("/", { params });
   return response.data;
 };
 
