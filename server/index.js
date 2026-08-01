@@ -3,6 +3,8 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 
 const connectDB = require("./config/db");
+const authRoutes = require("./routes/authRoutes");
+const documentRoutes = require("./routes/documentRoutes");
 
 dotenv.config();
 
@@ -21,7 +23,8 @@ app.use(
 app.use(express.json());
 
 // Routes
-app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/auth", authRoutes);
+app.use("/api/documents", documentRoutes);
 
 // 404 fallback
 app.use((_req, res) => {

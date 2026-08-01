@@ -1,15 +1,12 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
-
+const signToken = require("../utils/generateToken");
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const signToken = (userId) =>
-  jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
 const userPublicFields = (user) => ({
   id: user._id,
@@ -18,6 +15,7 @@ const userPublicFields = (user) => ({
   profilePicture: user.profilePicture,
   isEmailVerified: user.isEmailVerified,
 });
+
 
 // ─── REGISTER ────────────────────────────────────────────────────────────────
 
