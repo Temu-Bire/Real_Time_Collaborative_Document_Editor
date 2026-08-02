@@ -16,7 +16,7 @@ const createDocument = asyncHandler(async (req, res) => {
 
 const getDocuments = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page, 10) || 1;
-  const limit = parseInt(req.query.limit, 10) || 9;
+  const limit = parseInt(req.query.limit, 10) || 12;
   const search = req.query.search || "";
 
   const result = await documentService.getDocumentsByOwner(req.user.userId, {

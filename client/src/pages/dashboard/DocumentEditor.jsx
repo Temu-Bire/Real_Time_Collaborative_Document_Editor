@@ -175,7 +175,7 @@ const DocumentEditor = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200 flex flex-col">
+    <div className="min-h-screen bg-white/95 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200 flex flex-col">
       <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-700/80 px-3 sm:px-6 py-3 transition-colors">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2 sm:gap-3 overflow-hidden min-w-0 flex-1">
@@ -224,7 +224,7 @@ const DocumentEditor = () => {
         </div>
       )}
 
-      <main className="flex-1 w-full bg-slate-200 dark:bg-slate-950 overflow-y-auto p-3 sm:p-10 flex justify-center">
+      <main className="flex-1 w-full bg-slate-100 dark:bg-slate-950 overflow-y-auto p-3 sm:p-10 flex justify-center">
         <div className="w-full max-w-4xl flex justify-center">
           <TextEditor content={content} setContent={setContent} />
         </div>

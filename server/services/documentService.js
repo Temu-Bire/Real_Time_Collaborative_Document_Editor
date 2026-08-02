@@ -20,7 +20,7 @@ const createDocument = async (ownerId, { title, content = "" }) => {
   });
 };
 
-const getDocumentsByOwner = async (ownerId, { page = 1, limit = 9, search = "" }) => {
+const getDocumentsByOwner = async (ownerId, { page = 1, limit = 12, search = "" }) => {
   const skip = (page - 1) * limit;
   const query = buildOwnerQuery(ownerId, search.trim());
 

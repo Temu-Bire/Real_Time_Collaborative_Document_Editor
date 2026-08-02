@@ -28,7 +28,7 @@ const DocumentCard = ({ document: rawDoc, onDelete, onRename, onDuplicate }) => 
   };
 
   const handleConfirmDelete = async (e) => {
-    e.stopPropagation();
+    e?.stopPropagation();
     setDeleting(true);
     try {
       await onDelete(doc.id);

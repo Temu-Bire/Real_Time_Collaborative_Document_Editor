@@ -100,6 +100,7 @@ export const DocumentProvider = ({ children }) => {
 
   const deleteDocument = async (id) => {
     await documentService.deleteDocument(id);
+    
     await fetchDocuments();
   };
 
