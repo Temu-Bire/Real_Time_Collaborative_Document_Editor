@@ -1,0 +1,57 @@
+/* Real Letter / A4 Page Canvas Styling */
+.document-canvas-container {
+  background-color: #f1f5f9; /* Slate 100 canvas background */
+  padding: 2.5rem 1rem;
+  min-height: 100vh;
+}
+
+.dark .document-canvas-container {
+  background-color: #0b0f19; /* Dark canvas background */
+}
+
+/* TipTap Editor Container Overrides */
+.tiptap-page-editor .ProseMirror {
+  width: 816px; /* Standard US Letter width (8.5in at 96dpi) */
+  min-height: 1056px; /* Standard US Letter height (11in at 96dpi) */
+  padding: 96px 72px; /* 1-inch top/bottom, 0.75-inch left/right margins */
+  margin: 0 auto 32px auto;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 2px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  outline: none !important;
+}
+
+.dark .tiptap-page-editor .ProseMirror {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+/* Page Break Divider for Manual Page Breaks */
+.ProseMirror .page-break {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  margin: 32px -72px; /* Pull break outside margin padding */
+  background-color: #f1f5f9;
+  border-top: 1px solid #cbd5e1;
+  border-bottom: 1px solid #cbd5e1;
+  user-select: none;
+  cursor: default;
+}
+
+.dark .ProseMirror .page-break {
+  background-color: #0b0f19;
+  border-color: #334155;
+}
+
+.ProseMirror .page-break::after {
+  content: "— PAGE BREAK —";
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}

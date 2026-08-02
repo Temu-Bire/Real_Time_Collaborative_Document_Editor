@@ -42,13 +42,8 @@ const UserAvatar = ({ user, size = "md", className = "", onClick }) => {
   const hasPhoto = user?.profilePicture && !imgError;
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!onClick}
-      className={`relative inline-flex items-center justify-center rounded-full ring-2 ring-indigo-500/20 dark:ring-indigo-400/30 overflow-hidden font-bold text-white shadow-sm transition-transform active:scale-95 ${sizeClass} ${
-        onClick ? "cursor-pointer hover:opacity-90" : "cursor-default"
-      } ${className}`}
+    <div
+      className={`relative inline-flex items-center justify-center rounded-full ring-2 ring-indigo-500/20 dark:ring-indigo-400/30 overflow-hidden font-bold text-white shadow-sm ${sizeClass} ${className}`}
       title={user?.name || user?.email || "User"}
     >
       {hasPhoto ? (
@@ -65,7 +60,7 @@ const UserAvatar = ({ user, size = "md", className = "", onClick }) => {
           {initials}
         </span>
       )}
-    </button>
+    </div>
   );
 };
 

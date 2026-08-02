@@ -1,54 +1,38 @@
-import axios from "axios";
+import api from "./api";
 
-const API_URL = `${import.meta.env.VITE_API_URL}/documents`;
-
-const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-// Automatically attach JWT
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
-
-// CREATE
 export const createDocument = async (documentData) => {
-  const response = await api.post("/", documentData);
+  const response = await api.post("/documents", documentData);
   return response.data;
 };
 
-// GET ALL (with pagination & search support)
 export const getDocuments = async (params = {}) => {
-  const response = await api.get("/", { params });
+  const response = await api.get("/documents", { params });
   return response.data;
 };
 
-// GET ONE
 export const getDocumentById = async (id) => {
-  const response = await api.get(`/${id}`);
+  const response = await api.get(`/documents/${id}`);
   return response.data;
 };
 
-// UPDATE
 export const updateDocument = async (id, documentData) => {
-  const response = await api.put(`/${id}`, documentData);
+  const response = await api.put(`/documents/${id}`, documentData);
   return response.data;
 };
 
-// DELETE
 export const deleteDocument = async (id) => {
-  const response = await api.delete(`/${id}`);
+  const response = await api.delete(`/documents/${id}`);
   return response.data;
 };
+
+export const renameDocument = async (id, newTitle) =>
+  updateDocument(id, { title: newTitle });
+
+export const duplicateDocument = async (docToDuplicate) =>
+  createDocument({
+    title: `${docToDuplicate.title || "Untitled Document"} (Copy)`,
+    content: docToDuplicate.content || "",
+  });
 
 export default {
   createDocument,
@@ -56,4 +40,6 @@ export default {
   getDocumentById,
   updateDocument,
   deleteDocument,
+  renameDocument,
+  duplicateDocument,
 };

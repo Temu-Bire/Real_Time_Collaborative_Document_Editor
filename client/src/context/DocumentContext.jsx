@@ -1,18 +1,19 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useState,
   useCallback,
 } from "react";
-
 import documentService from "../services/documentService";
+import { normalizeDocument, normalizeDocuments } from "../utils/documentUtils";
+import { getErrorMessage } from "../utils/getErrorMessage";
 
-const DocumentContext = createContext();
+const DocumentContext = createContext(null);
 
 export const DocumentProvider = ({ children }) => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [limit, setLimit] = useState(9);
   const [searchQuery, setSearchQuery] = useState("");
@@ -25,21 +26,26 @@ export const DocumentProvider = ({ children }) => {
     hasPrevPage: false,
   });
 
-  // Fetch documents with params
   const fetchDocuments = useCallback(
     async (overrideParams = {}) => {
       try {
         setLoading(true);
+        setError("");
         const params = {
-          page: overrideParams.page !== undefined ? overrideParams.page : currentPage,
-          limit: overrideParams.limit !== undefined ? overrideParams.limit : limit,
-          search: overrideParams.search !== undefined ? overrideParams.search : searchQuery,
+          page:
+            overrideParams.page !== undefined ? overrideParams.page : currentPage,
+          limit:
+            overrideParams.limit !== undefined ? overrideParams.limit : limit,
+          search:
+            overrideParams.search !== undefined
+              ? overrideParams.search
+              : searchQuery,
         };
 
         const data = await documentService.getDocuments(params);
 
         if (Array.isArray(data)) {
-          setDocuments(data);
+          setDocuments(normalizeDocuments(data));
           setPagination({
             total: data.length,
             page: 1,
@@ -48,8 +54,8 @@ export const DocumentProvider = ({ children }) => {
             hasNextPage: false,
             hasPrevPage: false,
           });
-        } else if (data && data.documents) {
-          setDocuments(data.documents);
+        } else if (data?.documents) {
+          setDocuments(normalizeDocuments(data.documents));
           setPagination(
             data.pagination || {
               total: data.documents.length,
@@ -61,8 +67,9 @@ export const DocumentProvider = ({ children }) => {
             }
           );
         }
-      } catch (error) {
-        console.error("Failed to fetch documents:", error);
+      } catch (err) {
+        setError(getErrorMessage(err, "Failed to load documents."));
+        console.error("Failed to fetch documents:", err);
       } finally {
         setLoading(false);
       }
@@ -70,45 +77,40 @@ export const DocumentProvider = ({ children }) => {
     [currentPage, limit, searchQuery]
   );
 
-  // Create a new document
+  const getDocumentById = useCallback(async (id) => {
+    const doc = await documentService.getDocumentById(id);
+    return normalizeDocument(doc);
+  }, []);
+
   const createDocument = async (documentData) => {
-    try {
-      const response = await documentService.createDocument(documentData);
-      // Refresh documents
-      await fetchDocuments({ page: 1 });
-      return response.document;
-    } catch (error) {
-      console.error("Failed to create document:", error);
-      throw error;
-    }
+    const response = await documentService.createDocument(documentData);
+    await fetchDocuments({ page: 1 });
+    return normalizeDocument(response.document);
   };
 
-  // Update a document
   const updateDocument = async (id, documentData) => {
-    try {
-      const response = await documentService.updateDocument(id, documentData);
+    const response = await documentService.updateDocument(id, documentData);
 
-      setDocuments((prev) =>
-        prev.map((doc) => (doc._id === id ? response.document : doc))
-      );
+    setDocuments((prev) =>
+      prev.map((doc) => (doc.id === id ? normalizeDocument(response.document) : doc))
+    );
 
-      return response.document;
-    } catch (error) {
-      console.error("Failed to update document:", error);
-      throw error;
-    }
+    return normalizeDocument(response.document);
   };
 
-  // Delete a document
   const deleteDocument = async (id) => {
-    try {
-      await documentService.deleteDocument(id);
-      fetchDocuments();
-    } catch (error) {
-      console.error("Failed to delete document:", error);
-      throw error;
-    }
+    await documentService.deleteDocument(id);
+    await fetchDocuments();
   };
+
+  const duplicateDocument = async (doc) => {
+    const response = await documentService.duplicateDocument(doc);
+    await fetchDocuments({ page: 1 });
+    return normalizeDocument(response.document);
+  };
+
+  const renameDocument = async (id, newTitle) =>
+    updateDocument(id, { title: newTitle });
 
   const changePage = (page) => {
     setCurrentPage(page);
@@ -127,27 +129,38 @@ export const DocumentProvider = ({ children }) => {
     fetchDocuments({ page: 1, limit: newLimit });
   };
 
+  const clearError = () => setError("");
+
   const value = {
     documents,
     loading,
+    error,
     pagination,
     currentPage,
     limit,
     searchQuery,
     fetchDocuments,
+    getDocumentById,
     createDocument,
     updateDocument,
     deleteDocument,
+    duplicateDocument,
+    renameDocument,
     changePage,
     changeSearch,
     changeLimit,
+    clearError,
   };
 
   return (
-    <DocumentContext.Provider value={value}>
-      {children}
-    </DocumentContext.Provider>
+    <DocumentContext.Provider value={value}>{children}</DocumentContext.Provider>
   );
 };
 
-export const useDocuments = () => useContext(DocumentContext);
+export const useDocuments = () => {
+  const context = useContext(DocumentContext);
+  if (!context) {
+    throw new Error("useDocuments must be used within a DocumentProvider");
+  }
+  return context;
+};

@@ -76,7 +76,7 @@ const Navbar = () => {
             <button
               onClick={toggleTheme}
               className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none flex items-center gap-2 text-xs font-semibold"
-              title={`Active Theme: ${theme.toUpperCase()} (Click to toggle Light / Dark Gray / Night Warm White)`}
+              title={`Active Theme: ${theme.toUpperCase()} (Click to toggle  Dark  Or Night)`}
             >
               {renderThemeIcon()}
               <span className="capitalize hidden sm:inline">{theme}</span>
@@ -85,15 +85,18 @@ const Navbar = () => {
             {/* User Dropdown Menu */}
             {user && (
               <div className="relative" ref={dropdownRef}>
+                            
                 <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center gap-2.5 p-1.5 pl-2.5 pr-3 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
-                >
-                  <UserAvatar user={user} size="sm" />
-                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 max-w-[120px] truncate">
-                    {user?.name || "Account"}
-                  </span>
-                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="flex items-center gap-2.5 p-1.5 pl-2.5 pr-3 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+                    >
+                    <UserAvatar user={user} size="sm" />
+
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 max-w-[120px] truncate">
+                        {user?.name || "Account"}
+                    </span>
+
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
                 </button>
 
                 {/* Dropdown Popup */}

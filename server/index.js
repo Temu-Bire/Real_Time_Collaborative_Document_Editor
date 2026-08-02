@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const documentRoutes = require("./routes/documentRoutes");
+const errorHandler = require("./middleware/errorHandler");
 
 dotenv.config();
 
@@ -30,6 +31,8 @@ app.use("/api/documents", documentRoutes);
 app.use((_req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 

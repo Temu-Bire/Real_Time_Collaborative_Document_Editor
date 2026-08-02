@@ -1,13 +1,18 @@
-const { body, validationResult } = require("express-validator");
+const { body, param } = require("express-validator");
+const { handleValidationErrors } = require("./validationUtils");
+
+const documentIdValidation = [
+  param("id").isMongoId().withMessage("Invalid document ID"),
+];
 
 const documentValidation = [
   body("title")
+    .optional()
     .trim()
     .notEmpty()
-    .withMessage("Title is required")
+    .withMessage("Title cannot be empty")
     .isLength({ min: 3, max: 100 })
-    .withMessage("Title must be between 3 and 100 characters")
-    .default("Untitled Document"),
+    .withMessage("Title must be between 3 and 100 characters"),
 
   body("content")
     .optional()
@@ -15,19 +20,23 @@ const documentValidation = [
     .withMessage("Content must be text"),
 ];
 
-const handleValidationErrors = (req, res, next) => {
-  const errors = validationResult(req);
+const createDocumentValidation = [
+  body("title")
+    .trim()
+    .notEmpty()
+    .withMessage("Title is required")
+    .isLength({ min: 3, max: 100 })
+    .withMessage("Title must be between 3 and 100 characters"),
 
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      errors: errors.array(),
-    });
-  }
-
-  next();
-};
+  body("content")
+    .optional()
+    .isString()
+    .withMessage("Content must be text"),
+];
 
 module.exports = {
+  documentIdValidation,
   documentValidation,
+  createDocumentValidation,
   handleValidationErrors,
 };

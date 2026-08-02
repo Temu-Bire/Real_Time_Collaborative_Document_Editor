@@ -1,78 +1,71 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Edit2, Check } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
 
 const EditableTitle = ({ title, onTitleChange, onTitleSave }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [currentTitle, setCurrentTitle] = useState(title || "Untitled Document");
-  const inputRef = useRef(null);
+  const [currentTitle, setCurrentTitle] = useState(title);
+  const textareaRef = useRef(null);
 
+  // Sync internal state if prop updates externally
   useEffect(() => {
-    setCurrentTitle(title || "Untitled Document");
+    setCurrentTitle(title);
   }, [title]);
 
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
+  // Dynamically resize height based on content length
+  const adjustHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
     }
-  }, [isEditing]);
+  };
+
+  useEffect(() => {
+    if (isEditing) {
+      adjustHeight();
+    }
+  }, [isEditing, currentTitle]);
 
   const handleBlur = () => {
     setIsEditing(false);
-    const finalTitle = currentTitle.trim() || "Untitled Document";
-    setCurrentTitle(finalTitle);
-    if (onTitleChange) onTitleChange(finalTitle);
-    if (onTitleSave) onTitleSave(finalTitle);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      handleBlur();
-    } else if (e.key === "Escape") {
-      setCurrentTitle(title || "Untitled Document");
-      setIsEditing(false);
+    const trimmed = currentTitle.trim() || "Untitled Document";
+    setCurrentTitle(trimmed);
+    if (trimmed !== title) {
+      onTitleSave(trimmed);
     }
   };
 
-  const handleChange = (e) => {
-    const newTitle = e.target.value;
-    setCurrentTitle(newTitle);
-    if (onTitleChange) onTitleChange(newTitle);
+  const handleKeyDown = (e) => {
+    // Save on Enter without shift (Shift+Enter allows deliberate multi-line titles if needed)
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      e.target.blur();
+    }
   };
 
   return (
-    <div className="relative flex items-center group max-w-md">
+    <div className="flex-1 max-w-2xl min-w-[200px]">
       {isEditing ? (
-        <div className="relative w-full">
-          <input
-            ref={inputRef}
-            type="text"
-            value={currentTitle}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            className="w-full text-lg sm:text-xl font-bold bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3 py-1 rounded-lg border-2 border-indigo-600 outline-none shadow-xs transition"
-          />
-          <button
-            type="button"
-            onMouseDown={handleBlur}
-            className="absolute right-2 top-2 text-indigo-600 dark:text-indigo-400 p-0.5 rounded"
-          >
-            <Check className="w-4 h-4" />
-          </button>
-        </div>
+        <textarea
+          ref={textareaRef}
+          value={currentTitle}
+          onChange={(e) => {
+            setCurrentTitle(e.target.value);
+            onTitleChange(e.target.value);
+          }}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          rows={1}
+          autoFocus
+          className="w-full bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-bold text-lg sm:text-xl px-2 py-1 rounded-lg border border-indigo-500 focus:outline-none resize-none overflow-hidden transition-all leading-snug"
+        />
       ) : (
-        <button
-          type="button"
+        <h1
           onClick={() => setIsEditing(true)}
-          className="flex items-center gap-2 px-3 py-1 rounded-lg border border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left cursor-text"
-          title="Click to rename document"
+          className="font-bold text-lg sm:text-xl text-slate-800 dark:text-slate-100 px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer transition whitespace-pre-wrap break-words leading-snug"
+          title="Click to rename"
         >
-          <span className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate max-w-[280px] sm:max-w-[400px]">
-            {currentTitle}
-          </span>
-          <Edit2 className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-        </button>
+          {currentTitle || "Untitled Document"}
+        </h1>
       )}
     </div>
   );

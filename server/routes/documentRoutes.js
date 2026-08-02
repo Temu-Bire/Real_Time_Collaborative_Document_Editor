@@ -8,29 +8,46 @@ const {
   deleteDocument,
 } = require("../controllers/documentController");
 const {
+  documentIdValidation,
   documentValidation,
+  createDocumentValidation,
   handleValidationErrors,
 } = require("../validators/documentValidator");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// All document routes require authentication
 router.use(authMiddleware);
 
-// Create document
-router.post("/", createDocument, documentValidation, handleValidationErrors);
+router.post(
+  "/",
+  createDocumentValidation,
+  handleValidationErrors,
+  createDocument
+);
 
-// Get all documents
 router.get("/", getDocuments);
 
-// Get single document
-router.get("/:id", getDocumentById);
+router.get(
+  "/:id",
+  documentIdValidation,
+  handleValidationErrors,
+  getDocumentById
+);
 
-// Update document
-router.put("/:id", updateDocument, documentValidation, handleValidationErrors);
+router.put(
+  "/:id",
+  documentIdValidation,
+  documentValidation,
+  handleValidationErrors,
+  updateDocument
+);
 
-// Delete document
-router.delete("/:id", deleteDocument);
+router.delete(
+  "/:id",
+  documentIdValidation,
+  handleValidationErrors,
+  deleteDocument
+);
 
 module.exports = router;

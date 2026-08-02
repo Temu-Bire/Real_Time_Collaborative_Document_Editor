@@ -1,158 +1,77 @@
-const Document = require("../models/Document");
+const documentService = require("../services/documentService");
+const asyncHandler = require("../utils/asyncHandler");
 
-// CREATE DOCUMENT
-const createDocument = async (req, res) => {
-  try {
-    const { title, content = "" } = req.body;
-    const document = await Document.create({
-      title,
-      content,
-      owner: req.user.userId,
-    });
-
-    res.status(201).json({
-      message: "Document created successfully",
-      document,
-    });
-  } catch (error) {
-  console.error(error);
-
-  res.status(500).json({
-    message: error.message || "Internal server error",
+const createDocument = asyncHandler(async (req, res) => {
+  const { title, content = "" } = req.body;
+  const document = await documentService.createDocument(req.user.userId, {
+    title,
+    content,
   });
-}
-};
 
-// GET ALL DOCUMENTS OF LOGGED-IN USER (with pagination & search)
-const getDocuments = async (req, res) => {
-  try {
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 9;
-    const search = req.query.search ? req.query.search.trim() : "";
-    const skip = (page - 1) * limit;
+  res.status(201).json({
+    message: "Document created successfully",
+    document,
+  });
+});
 
-    const query = { owner: req.user.userId };
+const getDocuments = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 9;
+  const search = req.query.search || "";
 
-    if (search) {
-      query.title = { $regex: search, $options: "i" };
-    }
+  const result = await documentService.getDocumentsByOwner(req.user.userId, {
+    page,
+    limit,
+    search,
+  });
 
-    const total = await Document.countDocuments(query);
-    const documents = await Document.find(query)
-      .sort({ updatedAt: -1 })
-      .skip(skip)
-      .limit(limit);
+  res.status(200).json(result);
+});
 
-    const totalPages = Math.ceil(total / limit) || 1;
+const getDocumentById = asyncHandler(async (req, res) => {
+  const document = await documentService.getDocumentById(
+    req.params.id,
+    req.user.userId
+  );
 
-    res.status(200).json({
-      documents,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
-      },
-    });
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      message: error.message || "Internal server error",
-    });
+  if (!document) {
+    return res.status(404).json({ message: "Document not found" });
   }
-};
 
-// GET SINGLE DOCUMENT
-const getDocumentById = async (req, res) => {
-  try {
-    const document = await Document.findOne({
-      _id: req.params.id,
-      owner: req.user.userId,
-    });
+  res.status(200).json(document);
+});
 
-    if (!document) {
-      return res.status(404).json({
-        message: "Document not found",
-      });
-    }
+const updateDocument = asyncHandler(async (req, res) => {
+  const { title, content } = req.body;
 
-    res.status(200).json(document);
-  } catch (error) {
-  console.error(error);
+  const document = await documentService.updateDocument(
+    req.params.id,
+    req.user.userId,
+    { title, content }
+  );
 
-  res.status(500).json({
-    message: error.message || "Internal server error",
+  if (!document) {
+    return res.status(404).json({ message: "Document not found" });
+  }
+
+  res.status(200).json({
+    message: "Document updated successfully",
+    document,
   });
-}
-};
+});
 
-// UPDATE DOCUMENT
-const updateDocument = async (req, res) => {
-  try {
-    const { title, content } = req.body;
+const deleteDocument = asyncHandler(async (req, res) => {
+  const document = await documentService.deleteDocument(
+    req.params.id,
+    req.user.userId
+  );
 
-    const document = await Document.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        owner: req.user.userId,
-      },
-      {
-        title,
-        content,
-      },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+  if (!document) {
+    return res.status(404).json({ message: "Document not found" });
+  }
 
-    if (!document) {
-      return res.status(404).json({
-        message: "Document not found",
-      });
-    }
-
-    res.status(200).json({
-      message: "Document updated successfully",
-      document,
-    });
-  } catch (error) {
-  console.error(error);
-
-  res.status(500).json({
-    message: error.message || "Internal server error",
-  });
-}
-};
-
-// DELETE DOCUMENT
-const deleteDocument = async (req, res) => {
-  try {
-    const document = await Document.findOneAndDelete({
-      _id: req.params.id,
-      owner: req.user.userId,
-    });
-
-    if (!document) {
-      return res.status(404).json({
-        message: "Document not found",
-      });
-    }
-
-    res.status(200).json({
-      message: "Document deleted successfully",
-    });
-  } catch (error) {
-  console.error(error);
-
-  res.status(500).json({
-    message: error.message || "Internal server error",
-  });
-}
-};
+  res.status(200).json({ message: "Document deleted successfully" });
+});
 
 module.exports = {
   createDocument,
