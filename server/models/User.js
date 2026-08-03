@@ -22,6 +22,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       minlength: 8,
+      select: false, // Never return password by default
     },
 
     googleId: {
@@ -48,18 +49,50 @@ const userSchema = new mongoose.Schema(
 
     emailVerificationToken: {
       type: String,
+      select: false,
     },
 
     emailVerificationExpires: {
       type: Date,
+      select: false,
     },
 
     // Password reset
     passwordResetToken: {
       type: String,
+      select: false,
     },
 
     passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
+
+    // Account lockout for brute-force protection
+    loginAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+
+    lockUntil: {
+      type: Date,
+      select: false,
+    },
+
+    // Refresh token storage (hashed)
+    refreshToken: {
+      type: String,
+      select: false,
+    },
+
+    refreshTokenExpires: {
+      type: Date,
+      select: false,
+    },
+
+    // Last login tracking
+    lastLoginAt: {
       type: Date,
     },
   },
@@ -67,5 +100,15 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Virtual for checking if account is locked
+userSchema.virtual("isLocked").get(function () {
+  return !!(this.lockUntil && this.lockUntil > Date.now());
+});
+
+// Indexes
+userSchema.index({ email: 1 });
+userSchema.index({ googleId: 1 });
+userSchema.index({ refreshToken: 1 });
 
 module.exports = mongoose.model("User", userSchema);

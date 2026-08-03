@@ -25,7 +25,7 @@ const {
   createDocumentValidation,
   handleValidationErrors,
 } = require("../validators/documentValidator");
-const authMiddleware = require("../middleware/authMiddleware");
+const authMiddleware = require("../src/auth/middleware/authMiddleware").authMiddleware;
 const { requireDocumentPermission } = require("../middleware/permissionMiddleware");
 
 const router = express.Router();

@@ -1,4 +1,4 @@
-const { body } = require("express-validator");
+const { body, query } = require("express-validator");
 const { handleValidationErrors } = require("./validationUtils");
 
 const passwordRules = body("password")
@@ -46,6 +46,32 @@ const loginValidation = [
   body("password").notEmpty().withMessage("Password is required"),
 ];
 
+const googleLoginValidation = [
+  body("idToken")
+    .optional()
+    .isString()
+    .withMessage("idToken must be a string"),
+
+  body("access_token")
+    .optional()
+    .isString()
+    .withMessage("access_token must be a string"),
+
+  // Custom validation to ensure at least one token is provided
+  (req, res, next) => {
+    if (!req.body.idToken && !req.body.access_token) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Either idToken or access_token is required",
+        },
+      });
+    }
+    next();
+  },
+];
+
 const forgotPasswordValidation = [
   body("email")
     .trim()
@@ -71,11 +97,25 @@ const resendVerificationValidation = [
     .normalizeEmail(),
 ];
 
+const verifyEmailValidation = [
+  query("token").notEmpty().withMessage("Verification token is required"),
+];
+
+const refreshTokenValidation = [
+  body("refreshToken")
+    .optional()
+    .isString()
+    .withMessage("Refresh token must be a string"),
+];
+
 module.exports = {
   registerValidation,
   loginValidation,
+  googleLoginValidation,
   forgotPasswordValidation,
   resetPasswordValidation,
   resendVerificationValidation,
+  verifyEmailValidation,
+  refreshTokenValidation,
   handleValidationErrors,
 };
