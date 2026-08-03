@@ -18,11 +18,13 @@ const documentController = {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 12;
     const search = req.query.search || "";
+    const type = req.query.type || "";
 
     const result = await documentService.getDocumentsByUser(req.user.userId, {
       page,
       limit,
       search,
+      type,
     });
 
     // Return result directly for backward compatibility with frontend
@@ -44,6 +46,11 @@ const documentController = {
         },
       });
     }
+
+    // Record this open for the "recently opened" list (fire and forget)
+    documentService
+      .recordDocumentOpen(req.user.userId, req.params.id)
+      .catch((err) => logger.warn({ error: err.message }, "Failed to record document open"));
 
     // Return document directly for backward compatibility
     res.status(200).json(document);

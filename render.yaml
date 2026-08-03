@@ -1,0 +1,59 @@
+# Render Blueprint - SyncWrite Real-Time Collaborative Document Editor
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Two services:
+#   1. syncwrite-api  - Express + Socket.IO + Yjs real-time backend (Web Service)
+#   2. syncwrite-ui   - React/Vite frontend (Static Site) with SPA rewrite
+#
+# After the first deploy, open each service's "Environment" tab in the Render
+# dashboard and fill in the "sync: false" values below.
+
+services:
+  - type: web
+    name: syncwrite-api
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # URL of the deployed frontend, e.g. https://syncwrite-ui.onrender.com
+      - key: CLIENT_URL
+        sync: false
+      # MongoDB connection string (Atlas recommended)
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: REFRESH_TOKEN_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+  - type: web
+    name: syncwrite-ui
+    runtime: static
+    rootDir: client
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    autoDeploy: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      # Full URL of the deployed API, e.g. https://syncwrite-api.onrender.com/api
+      - key: VITE_API_URL
+        sync: false
+      # Base URL of the API for the WebSocket/Socket.IO connection, e.g. https://syncwrite-api.onrender.com
+      - key: VITE_SOCKET_URL
+        sync: false
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false

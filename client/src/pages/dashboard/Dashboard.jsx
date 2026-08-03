@@ -12,6 +12,13 @@ import ShareModal from "../../components/documents/ShareModal";
 import { useDocuments } from "../../context/DocumentContext";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 
+const DOC_TYPE_TABS = [
+  { value: "all", label: "All" },
+  { value: "owned", label: "Owned by me" },
+  { value: "shared", label: "Shared with me" },
+  { value: "recent", label: "Recent" },
+];
+
 const Dashboard = () => {
   const navigate = useNavigate();
 
@@ -22,6 +29,7 @@ const Dashboard = () => {
     pagination,
     currentPage,
     searchQuery,
+    docType,
     fetchDocuments,
     deleteDocument,
     createDocument,
@@ -30,6 +38,7 @@ const Dashboard = () => {
     changePage,
     changeSearch,
     changeLimit,
+    changeDocType,
     clearError,
     shareDocument,
     updateCollaboratorRole,
@@ -160,6 +169,30 @@ const Dashboard = () => {
           />
         )}
 
+        {/* Document type filter tabs */}
+        <div
+          role="tablist"
+          aria-label="Filter documents"
+          className="flex flex-wrap items-center gap-1.5 mb-4 p-1 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs w-fit max-w-full overflow-x-auto"
+        >
+          {DOC_TYPE_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              role="tab"
+              aria-selected={docType === tab.value}
+              onClick={() => changeDocType(tab.value)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                docType === tab.value
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <form onSubmit={handleSearchSubmit} className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -220,6 +253,26 @@ const Dashboard = () => {
               >
                 Clear Search Filter
               </button>
+            </div>
+          ) : docType === "recent" ? (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 text-center my-8">
+              <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">
+                No recently opened documents
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+                Open any document to have it appear here for quick access.
+              </p>
+            </div>
+          ) : docType === "shared" ? (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-12 text-center my-8">
+              <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">
+                Nothing shared with you yet
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+                Documents that others share with you will show up here.
+              </p>
             </div>
           ) : (
             <EmptyState onCreate={handleCreateDocument} />

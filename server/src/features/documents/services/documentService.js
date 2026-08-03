@@ -8,21 +8,37 @@ const { logger } = require("../../../shared/utils/logger");
 
 const documentService = {
   async createDocument(ownerId, { title, content = "" }) {
-    return Document.create({
+    const document = await Document.create({
       title,
       content,
       owner: ownerId,
       collaborators: [],
     });
+
+    // Initialize version tracking for new document
+    versionService.initializeAfterVersion(document._id.toString(), content || "");
+
+    return document;
   },
 
-  async getDocumentsByUser(userId, { page = 1, limit = 12, search = "" }) {
+  async getDocumentsByUser(userId, { page = 1, limit = 12, search = "", type = "" }) {
     const skip = (page - 1) * limit;
     const strSearch = search.trim();
+    const strType = type.toLowerCase().trim();
 
-    const query = {
-      $or: [{ owner: userId }, { "collaborators.user": userId }],
-    };
+    let query;
+
+    if (strType === "owned") {
+      query = { owner: userId };
+    } else if (strType === "shared") {
+      query = { owner: { $ne: userId }, "collaborators.user": userId };
+    } else if (strType === "recent") {
+      return this.getRecentDocuments(userId, { page, limit, search });
+    } else {
+      query = {
+        $or: [{ owner: userId }, { "collaborators.user": userId }],
+      };
+    }
 
     if (strSearch) {
       query.title = { $regex: strSearch, $options: "i" };
@@ -54,6 +70,85 @@ const documentService = {
     };
   },
 
+  // Recently opened documents for the current user
+  async getRecentDocuments(userId, { page = 1, limit = 12, search = "" } = {}) {
+    const User = require("../../auth/models/User");
+    const strSearch = search.trim();
+    const skipCount = (page - 1) * limit;
+
+    const user = await User.findById(userId).select("recentDocuments").lean();
+
+    if (!user || !user.recentDocuments || user.recentDocuments.length === 0) {
+      return {
+        documents: [],
+        pagination: buildPaginationResponse(0, page, limit),
+      };
+    }
+
+    const recent = [...user.recentDocuments]
+      .sort((a, b) => new Date(b.openedAt) - new Date(a.openedAt))
+      .map((entry) => entry.document);
+
+    let documents = await Document.find({ _id: { $in: recent } })
+      .populate("owner", "name email profilePicture")
+      .populate("collaborators.user", "name email profilePicture")
+      .lean();
+
+    // Preserve the "most recently opened first" order
+    const orderMap = new Map(recent.map((id, index) => [id.toString(), index]));
+    documents.sort(
+      (a, b) => (orderMap.get(a._id.toString()) ?? 0) - (orderMap.get(b._id.toString()) ?? 0)
+    );
+
+    if (strSearch) {
+      const regex = new RegExp(strSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      documents = documents.filter((doc) => regex.test(doc.title || ""));
+    }
+
+    const total = documents.length;
+    documents = documents.slice(skipCount, skipCount + limit);
+
+    const normalizedDocs = documents.map((doc) => {
+      const userRole = getDocumentUserRole(doc, userId);
+      return {
+        ...doc,
+        userRole,
+        isOwner: doc.owner._id.toString() === userId.toString(),
+      };
+    });
+
+    return {
+      documents: normalizedDocs,
+      pagination: buildPaginationResponse(total, page, limit),
+    };
+  },
+
+  // Track that a user opened a document (for the "recently opened" list)
+  async recordDocumentOpen(userId, documentId) {
+    const User = require("../../auth/models/User");
+    const MAX_RECENT = 20;
+
+    // Update openedAt if the document is already in the list
+    await User.updateOne(
+      { _id: userId, "recentDocuments.document": documentId },
+      { $set: { "recentDocuments.$.openedAt": new Date() } }
+    );
+
+    // Otherwise add it, keeping the list sorted and capped
+    await User.updateOne(
+      { _id: userId, "recentDocuments.document": { $ne: documentId } },
+      {
+        $push: {
+          recentDocuments: {
+            $each: [{ document: documentId, openedAt: new Date() }],
+            $sort: { openedAt: -1 },
+            $slice: MAX_RECENT,
+          },
+        },
+      }
+    );
+  },
+
   async getDocumentById(documentId, userId) {
     const doc = await Document.findById(documentId)
       .populate("owner", "name email profilePicture")
@@ -72,6 +167,7 @@ const documentService = {
     };
   },
 
+  // Auto-save: updates document only, NEVER creates version
   async updateDocument(documentId, { title, content }, authorId, _changeDescription, isAutosave = true) {
     const updates = {};
     if (title !== undefined) updates.title = title;
@@ -86,17 +182,14 @@ const documentService = {
       .lean();
 
     if (document && isAutosave) {
-      await versionService.handleAutoSave(
-        documentId,
-        authorId,
-        document.title,
-        document.content || ""
-      );
+      // Track changes but NEVER create version on auto-save
+      versionService.onAutoSave(documentId, document.content || "");
     }
 
     return document;
   },
 
+  // Manual save - creates version if significant changes
   async createManualVersion(documentId, authorId, changeDescription) {
     const doc = await Document.findById(documentId).lean();
     if (!doc) return null;
@@ -115,9 +208,9 @@ const documentService = {
     await DocumentVersion.deleteMany({ document: documentId });
     return Document.findByIdAndDelete(documentId).lean();
   },
+  async addCollaborator(documentId, targetEmail, role) {
 
-  async addCollaborator(documentId, targetEmail, role = "Viewer") {
-    const User = require("../../../features/auth/models/User");
+    const User = require("../../auth/models/User");
     const targetUser = await User.findOne({ email: targetEmail.toLowerCase().trim() });
     if (!targetUser) {
       throw new Error("User with this email was not found");

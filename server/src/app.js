@@ -9,8 +9,14 @@ const { requestLogger, errorHandler, notFoundHandler } = require("./shared/middl
 const { apiLimiter } = require("./features/auth/middleware/rateLimiter");
 const { logger } = require("./shared/utils/logger");
 
-// Load environment variables
+// Load environment variables.
+// Base values come from `.env`; environment-specific overrides are loaded
+// from `.env.development` / `.env.production` based on NODE_ENV.
 dotenv.config();
+dotenv.config({
+  path: `.env.${process.env.NODE_ENV || "development"}`,
+  override: true,
+});
 
 const app = express();
 

@@ -36,6 +36,8 @@ const getColorFromName = (name = "") => {
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
+const getAccessToken = () => localStorage.getItem("accessToken") || "";
+
 const TextEditor = ({
   content,
   setContent,
@@ -56,6 +58,9 @@ const TextEditor = ({
     () =>
       new SocketIOProvider(SOCKET_URL, `document-${documentId}`, ydoc, {
         autoConnect: true,
+        // Function form: Socket.IO calls this on every (re)connect so a
+        // freshly refreshed access token is always used.
+        auth: () => ({ token: getAccessToken() }),
       }),
     [documentId, ydoc]
   );

@@ -95,6 +95,21 @@ const userSchema = new mongoose.Schema(
     lastLoginAt: {
       type: Date,
     },
+
+    // Recently opened documents (per user), capped list
+    recentDocuments: [
+      {
+        document: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Document",
+          required: true,
+        },
+        openedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   {
     timestamps: true,

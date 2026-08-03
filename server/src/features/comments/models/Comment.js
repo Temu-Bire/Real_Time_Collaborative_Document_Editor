@@ -17,7 +17,6 @@ const commentSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      maxlength: 1000,
     },
     parentComment: {
       type: mongoose.Schema.Types.ObjectId,

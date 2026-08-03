@@ -17,6 +17,7 @@ export const DocumentProvider = ({ children }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [limit, setLimit] = useState(9);
   const [searchQuery, setSearchQuery] = useState("");
+  const [docType, setDocType] = useState("all");
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
@@ -40,6 +41,8 @@ export const DocumentProvider = ({ children }) => {
             overrideParams.search !== undefined
               ? overrideParams.search
               : searchQuery,
+          type:
+            overrideParams.type !== undefined ? overrideParams.type : docType,
         };
 
         const data = await documentService.getDocuments(params);
@@ -74,7 +77,7 @@ export const DocumentProvider = ({ children }) => {
         setLoading(false);
       }
     },
-    [currentPage, limit, searchQuery]
+    [currentPage, limit, searchQuery, docType]
   );
 
   const getDocumentById = useCallback(async (id) => {
@@ -128,6 +131,12 @@ export const DocumentProvider = ({ children }) => {
     setLimit(newLimit);
     setCurrentPage(1);
     fetchDocuments({ page: 1, limit: newLimit });
+  };
+
+  const changeDocType = (type) => {
+    setDocType(type);
+    setCurrentPage(1);
+    fetchDocuments({ page: 1, type });
   };
 
   const clearError = () => setError("");
@@ -199,6 +208,7 @@ export const DocumentProvider = ({ children }) => {
     currentPage,
     limit,
     searchQuery,
+    docType,
     fetchDocuments,
     getDocumentById,
     createDocument,
@@ -221,6 +231,7 @@ export const DocumentProvider = ({ children }) => {
     changePage,
     changeSearch,
     changeLimit,
+    changeDocType,
     clearError,
   };
 
