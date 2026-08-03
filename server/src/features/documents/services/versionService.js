@@ -1,176 +1,295 @@
+const crypto = require("crypto");
 const DocumentVersion = require("../models/DocumentVersion");
 const Document = require("../models/Document");
 const { logger } = require("../../../shared/utils/logger");
 
 /**
- * VersionService - Handles intelligent document versioning
- * Only creates versions when meaningful changes occur
+ * VersionService - Handles intelligent document versioning.
+ * Auto-save updates the Document only; versions are created at meaningful milestones.
  */
 class VersionService {
   constructor() {
-    // Configuration for version creation thresholds
     this.config = {
-      // Time-based: create version after 5 minutes of continuous editing
-      intervalMinutes: 5,
-      // Change-based: create version if 10% of content changed
       changePercentageThreshold: 0.1,
-      // Minimum character changes to consider significant
-      minCharChangeThreshold: 50,
-      // Maximum versions to keep (for future use)
+      minCharChangeThreshold: 150,
+      trivialChangeThreshold: 10,
+      idleSeconds: 60,
       maxVersions: null,
     };
 
-    // In-memory tracking for active editing sessions
-    // In production, this could be moved to Redis for multi-instance deployments
     this.activeSessions = new Map();
   }
 
-  /**
-   * Calculate similarity between two strings using Levenshtein distance
-   * Returns percentage of change (0-1)
-   */
-  calculateChangePercentage(oldContent, newContent) {
-    if (!oldContent && !newContent) return 0;
-    if (!oldContent) return 1;
-    if (!newContent) return 1;
+  contentHash(content) {
+    return crypto.createHash("sha256").update(content || "").digest("hex");
+  }
 
-    const oldLen = oldContent.length;
-    const newLen = newContent.length;
+  /**
+   * Normalize HTML content to plain text for meaningful comparison.
+   * Strips tags and collapses whitespace so formatting-only edits are ignored.
+   */
+  normalizeTextContent(content) {
+    if (!content) return "";
+    return content
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  calculateChangePercentage(oldContent, newContent) {
+    const oldText = this.normalizeTextContent(oldContent);
+    const newText = this.normalizeTextContent(newContent);
+
+    if (!oldText && !newText) return 0;
+    if (!oldText || !newText) return 1;
+
+    const oldLen = oldText.length;
+    const newLen = newText.length;
     const maxLen = Math.max(oldLen, newLen);
 
     if (maxLen === 0) return 0;
 
-    // Simple character-based diff for performance
-    // For more accuracy, could use a proper diff library
     let changes = 0;
     const minLen = Math.min(oldLen, newLen);
 
     for (let i = 0; i < minLen; i++) {
-      if (oldContent[i] !== newContent[i]) changes++;
+      if (oldText[i] !== newText[i]) changes++;
     }
 
-    // Add length difference as changes
     changes += Math.abs(oldLen - newLen);
-
     return changes / maxLen;
   }
 
-  /**
-   * Count meaningful character changes (added, removed, modified)
-   */
   countCharChanges(oldContent, newContent) {
-    if (!oldContent && !newContent) return 0;
-    if (!oldContent) return newContent.length;
-    if (!newContent) return oldContent.length;
+    const oldText = this.normalizeTextContent(oldContent);
+    const newText = this.normalizeTextContent(newContent);
+
+    if (!oldText && !newText) return 0;
+    if (!oldText) return newText.length;
+    if (!newText) return oldText.length;
 
     let changes = 0;
-    const minLen = Math.min(oldContent.length, newContent.length);
+    const minLen = Math.min(oldText.length, newText.length);
 
     for (let i = 0; i < minLen; i++) {
-      if (oldContent[i] !== newContent[i]) changes++;
+      if (oldText[i] !== newText[i]) changes++;
     }
 
-    changes += Math.abs(oldContent.length - newContent.length);
+    changes += Math.abs(oldText.length - newText.length);
     return changes;
   }
 
-  /**
-   * Check if content is identical to previous version
-   */
   isContentIdentical(oldContent, newContent) {
-    return oldContent === newContent;
+    return this.contentHash(oldContent) === this.contentHash(newContent);
   }
 
-  /**
-   * Get or create an active editing session for a document
-   */
+  isWhitespaceOnlyChange(oldContent, newContent) {
+    const oldText = this.normalizeTextContent(oldContent);
+    const newText = this.normalizeTextContent(newContent);
+    return oldText === newText;
+  }
+
+  isTrivialChange(oldContent, newContent) {
+    const charChanges = this.countCharChanges(oldContent, newContent);
+    return charChanges > 0 && charChanges <= this.config.trivialChangeThreshold;
+  }
+
+  isSignificantChange(oldContent, newContent) {
+    if (this.isWhitespaceOnlyChange(oldContent, newContent)) return false;
+
+    const charChanges = this.countCharChanges(oldContent, newContent);
+    if (charChanges <= this.config.trivialChangeThreshold) return false;
+
+    const changePercent = this.calculateChangePercentage(oldContent, newContent);
+    return (
+      changePercent >= this.config.changePercentageThreshold ||
+      charChanges >= this.config.minCharChangeThreshold
+    );
+  }
+
   getSession(documentId) {
     if (!this.activeSessions.has(documentId)) {
       this.activeSessions.set(documentId, {
         lastVersionContent: null,
+        lastVersionHash: null,
         lastVersionTime: null,
-        changeAccumulator: 0,
-        isEditing: false,
+        hasPendingSignificantChanges: false,
+        idleTimer: null,
+        initialized: false,
       });
     }
     return this.activeSessions.get(documentId);
   }
 
-  /**
-   * Update session with new content
-   */
-  updateSession(documentId, content) {
+  clearIdleTimer(documentId) {
+    const session = this.activeSessions.get(documentId);
+    if (session?.idleTimer) {
+      clearTimeout(session.idleTimer);
+      session.idleTimer = null;
+    }
+  }
+
+  async getLatestVersion(documentId) {
+    return DocumentVersion.findOne({ document: documentId })
+      .sort({ versionNumber: -1 })
+      .lean();
+  }
+
+  async initializeSession(documentId) {
     const session = this.getSession(documentId);
-    const now = Date.now();
+    if (session.initialized) return session;
 
-    if (session.lastVersionContent !== null) {
-      const charChanges = this.countCharChanges(session.lastVersionContent, content);
-      const changePercent = this.calculateChangePercentage(session.lastVersionContent, content);
+    const latestVersion = await this.getLatestVersion(documentId);
+    session.lastVersionContent = latestVersion?.content ?? null;
+    session.lastVersionHash = latestVersion
+      ? latestVersion.contentHash || this.contentHash(latestVersion.content)
+      : null;
+    session.lastVersionTime = latestVersion?.createdAt
+      ? new Date(latestVersion.createdAt).getTime()
+      : null;
+    session.initialized = true;
 
-      session.changeAccumulator += charChanges;
+    return session;
+  }
 
-      // Check if we should create a version based on accumulated changes
-      const shouldCreateByChange = 
-        changePercent >= this.config.changePercentageThreshold &&
-        session.changeAccumulator >= this.config.minCharChangeThreshold;
-
-      // Check if 5 minutes have passed since last version
-      const timeSinceLastVersion = session.lastVersionTime 
-        ? now - session.lastVersionTime 
-        : Infinity;
-      const shouldCreateByTime = timeSinceLastVersion >= this.config.intervalMinutes * 60 * 1000;
-
-      session.isEditing = true;
-
-      return {
-        shouldCreate: shouldCreateByChange || shouldCreateByTime,
-        reason: shouldCreateByChange ? "significant_change" : "interval",
-        changePercent,
-        charChanges: session.changeAccumulator,
-        timeSinceLastVersion,
-      };
+  /**
+   * Evaluate whether a version should be created for the given content.
+   */
+  evaluateVersionNeed(currentContent, latestVersionContent, { requireSignificance = false } = {}) {
+    if (this.isContentIdentical(latestVersionContent, currentContent)) {
+      return { shouldCreate: false, reason: "identical" };
     }
 
-    // First update after version creation
-    session.lastVersionContent = content;
-    session.lastVersionTime = now;
-    session.changeAccumulator = 0;
-    session.isEditing = true;
+    if (this.isWhitespaceOnlyChange(latestVersionContent, currentContent)) {
+      return { shouldCreate: false, reason: "whitespace_or_formatting" };
+    }
 
-    return { shouldCreate: false };
+    if (this.isTrivialChange(latestVersionContent, currentContent)) {
+      return { shouldCreate: false, reason: "trivial_change" };
+    }
+
+    if (requireSignificance) {
+      const significant = this.isSignificantChange(latestVersionContent, currentContent);
+      if (!significant) {
+        return { shouldCreate: false, reason: "below_significance_threshold" };
+      }
+    }
+
+    return { shouldCreate: true };
   }
 
-  /**
-   * Mark that a version was created, reset session tracking
-   */
-  markVersionCreated(documentId, content) {
+  scheduleIdleVersion(documentId, authorId, title) {
     const session = this.getSession(documentId);
-    session.lastVersionContent = content;
-    session.lastVersionTime = Date.now();
-    session.changeAccumulator = 0;
+    this.clearIdleTimer(documentId);
+
+    session.idleTimer = setTimeout(async () => {
+      try {
+        const doc = await Document.findById(documentId).select("content title").lean();
+        if (!doc) return;
+
+        const latestVersion = await this.getLatestVersion(documentId);
+        const latestContent = latestVersion?.content ?? session.lastVersionContent ?? "";
+
+        const evaluation = this.evaluateVersionNeed(doc.content || "", latestContent, {
+          requireSignificance: true,
+        });
+
+        if (evaluation.shouldCreate) {
+          await this.createVersion({
+            documentId,
+            authorId,
+            title: doc.title || title,
+            content: doc.content || "",
+            reason: "interval",
+            changeDescription: "Saved after editing pause",
+          });
+        }
+
+        session.hasPendingSignificantChanges = false;
+      } catch (err) {
+        logger.error({ err, documentId }, "Failed to create idle version");
+      }
+    }, this.config.idleSeconds * 1000);
   }
 
   /**
-   * Mark document as closed - create final version if there are unsaved changes
+   * Called on every auto-save. Updates the Document only — never creates a version.
+   * Tracks changes and schedules an idle version when significant edits are detected.
+   */
+  async handleAutoSave(documentId, authorId, title, content) {
+    await this.initializeSession(documentId);
+    const session = this.getSession(documentId);
+
+    const baselineContent = session.lastVersionContent ?? "";
+    const significant = this.isSignificantChange(baselineContent, content);
+
+    if (significant && !this.isContentIdentical(baselineContent, content)) {
+      session.hasPendingSignificantChanges = true;
+      this.scheduleIdleVersion(documentId, authorId, title);
+    }
+
+    return { versionCreated: false };
+  }
+
+  /**
+   * Create a manual version (explicit "Save Version" action).
+   * Skips only when content hash matches the latest version.
+   */
+  async createManualVersion({ documentId, authorId, title, content, changeDescription }) {
+    await this.initializeSession(documentId);
+
+    const latestVersion = await this.getLatestVersion(documentId);
+    const latestContent = latestVersion?.content ?? null;
+
+    if (latestContent !== null && this.isContentIdentical(latestContent, content)) {
+      return { skipped: true, reason: "identical" };
+    }
+
+    const version = await this.createVersion({
+      documentId,
+      authorId,
+      title,
+      content,
+      reason: "manual",
+      changeDescription: changeDescription || "Manual save",
+    });
+
+    return { skipped: false, version };
+  }
+
+  /**
+   * Create a version when the user closes or leaves the document.
    */
   async handleDocumentClose(documentId, userId, currentContent) {
-    const session = this.getSession(documentId);
-    
-    if (!session.isEditing || session.lastVersionContent === null) {
-      return { created: false, reason: "no_changes" };
+    await this.initializeSession(documentId);
+    this.clearIdleTimer(documentId);
+
+    const latestVersion = await this.getLatestVersion(documentId);
+    const latestContent = latestVersion?.content ?? null;
+
+    if (latestContent === null) {
+      const evaluation = this.evaluateVersionNeed(currentContent, "");
+      if (!evaluation.shouldCreate && !currentContent) {
+        this.activeSessions.delete(documentId);
+        return { created: false, reason: "empty_document" };
+      }
+    } else {
+      const evaluation = this.evaluateVersionNeed(currentContent, latestContent);
+      if (!evaluation.shouldCreate) {
+        this.activeSessions.delete(documentId);
+        return { created: false, reason: evaluation.reason };
+      }
     }
 
-    // Check if there are any changes since last version
-    if (this.isContentIdentical(session.lastVersionContent, currentContent)) {
-      this.activeSessions.delete(documentId);
-      return { created: false, reason: "identical" };
-    }
-
-    // Create a version for document close
+    const doc = await Document.findById(documentId).select("title").lean();
     const version = await this.createVersion({
       documentId,
       authorId: userId,
-      title: (await Document.findById(documentId).select("title").lean())?.title || "Untitled",
+      title: doc?.title || "Untitled",
       content: currentContent,
       reason: "close_document",
     });
@@ -179,14 +298,18 @@ class VersionService {
     return { created: true, version, reason: "close_document" };
   }
 
-  /**
-   * Create a new document version
-   */
   async createVersion({ documentId, authorId, title, content, reason, changeDescription }) {
-    const latestVersion = await DocumentVersion.findOne({ document: documentId })
-      .sort({ versionNumber: -1 })
-      .select("versionNumber")
-      .lean();
+    const hash = this.contentHash(content);
+    const latestVersion = await this.getLatestVersion(documentId);
+
+    if (latestVersion) {
+      const latestHash =
+        latestVersion.contentHash || this.contentHash(latestVersion.content);
+      if (latestHash === hash) {
+        logger.info({ documentId, reason }, "Skipped duplicate version (identical hash)");
+        return null;
+      }
+    }
 
     const versionNumber = latestVersion ? latestVersion.versionNumber + 1 : 1;
 
@@ -194,41 +317,41 @@ class VersionService {
       document: documentId,
       title,
       content: content || "",
+      contentHash: hash,
       author: authorId,
       versionNumber,
       changeDescription: changeDescription || this.getDefaultDescription(reason),
       reason,
-      isAutosave: reason !== "manual",
+      isAutosave: reason !== "manual" && reason !== "restore",
     });
 
-    // Update session tracking
-    this.markVersionCreated(documentId, content);
+    this.markVersionCreated(documentId, content, hash);
 
-    logger.info(
-      { documentId, versionNumber, reason, authorId },
-      "Document version created"
-    );
+    logger.info({ documentId, versionNumber, reason, authorId }, "Document version created");
 
     return version;
   }
 
-  /**
-   * Get default description based on reason
-   */
+  markVersionCreated(documentId, content, hash) {
+    const session = this.getSession(documentId);
+    session.lastVersionContent = content;
+    session.lastVersionHash = hash || this.contentHash(content);
+    session.lastVersionTime = Date.now();
+    session.hasPendingSignificantChanges = false;
+    this.clearIdleTimer(documentId);
+  }
+
   getDefaultDescription(reason) {
     const descriptions = {
       manual: "Manual save",
-      interval: "Auto-save interval (5 minutes)",
-      significant_change: "Significant content change detected",
+      interval: "Saved after editing pause",
+      significant_change: "Significant content change",
       close_document: "Document closed",
       restore: "Restored from previous version",
     };
     return descriptions[reason] || "Version created";
   }
 
-  /**
-   * Get document versions with pagination
-   */
   async getVersions(documentId, userId, { page = 1, limit = 20 } = {}) {
     const doc = await Document.findById(documentId);
     if (!doc) throw new Error("Document not found");
@@ -262,9 +385,6 @@ class VersionService {
     };
   }
 
-  /**
-   * Restore document to a specific version
-   */
   async restoreVersion(documentId, versionNumber, userId) {
     const doc = await Document.findById(documentId);
     if (!doc) throw new Error("Document not found");
@@ -287,28 +407,17 @@ class VersionService {
       .populate("collaborators.user", "name email profilePicture")
       .lean();
 
-    // Create a new version for the restore action
-    const latestVersion = await DocumentVersion.findOne({ document: documentId })
-      .sort({ versionNumber: -1 })
-      .select("versionNumber")
-      .lean();
-
-    const newVersionNumber = latestVersion ? latestVersion.versionNumber + 1 : 1;
-
-    await DocumentVersion.create({
-      document: documentId,
+    await this.createVersion({
+      documentId,
+      authorId: userId,
       title: version.title,
       content: version.content,
-      author: userId,
-      versionNumber: newVersionNumber,
-      changeDescription: `Restored from version ${versionNumber}`,
       reason: "restore",
-      isAutosave: false,
+      changeDescription: `Restored from version ${versionNumber}`,
     });
 
     return updatedDoc;
   }
 }
 
-// Export singleton instance
 module.exports = new VersionService();

@@ -16,7 +16,10 @@ export const getDocumentById = async (id) => {
 };
 
 export const updateDocument = async (id, documentData) => {
-  const response = await api.put(`/documents/${id}`, documentData);
+  const response = await api.put(`/documents/${id}`, {
+    ...documentData,
+    isAutosave: documentData.isAutosave !== false,
+  });
   return response.data;
 };
 
@@ -94,6 +97,11 @@ export const restoreDocumentVersion = async (id, versionNumber) => {
   return response.data;
 };
 
+export const closeDocument = async (id, content) => {
+  const response = await api.post(`/documents/${id}/close`, { content });
+  return response.data;
+};
+
 export default {
   createDocument,
   getDocuments,
@@ -114,4 +122,5 @@ export default {
   unresolveComment,
   getDocumentVersions,
   restoreDocumentVersion,
+  closeDocument,
 };

@@ -255,7 +255,7 @@ const VersionHistoryDrawer = ({
       {/* Drawer Footer */}
       <div className="p-4 border-t border-slate-100 dark:border-slate-700/80 bg-white dark:bg-slate-800">
         <p className="text-center text-xs text-slate-400 dark:text-slate-500">
-          Auto-saves create versions automatically. Manual saves create labeled versions.
+          Versions are saved at meaningful milestones — after significant edits, when you leave, or on manual save.
         </p>
       </div>
     </div>

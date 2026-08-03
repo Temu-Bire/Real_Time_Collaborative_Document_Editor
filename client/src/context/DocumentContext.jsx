@@ -187,6 +187,10 @@ export const DocumentProvider = ({ children }) => {
     return normalizeDocument(response.document);
   };
 
+  const closeDocument = async (id, content) => {
+    return documentService.closeDocument(id, content);
+  };
+
   const value = {
     documents,
     loading,
@@ -213,6 +217,7 @@ export const DocumentProvider = ({ children }) => {
     unresolveComment,
     getDocumentVersions,
     restoreDocumentVersion,
+    closeDocument,
     changePage,
     changeSearch,
     changeLimit,

@@ -50,14 +50,14 @@ const documentController = {
   }),
 
   updateDocument: asyncHandler(async (req, res) => {
-    const { title, content, changeDescription } = req.body;
+    const { title, content, changeDescription, isAutosave = true } = req.body;
 
     const document = await documentService.updateDocument(
       req.params.id,
       { title, content },
       req.user.userId,
       changeDescription,
-      false
+      isAutosave !== false
     );
 
     if (!document) {
@@ -307,7 +307,6 @@ const documentController = {
     const documentId = req.params.id;
     const userId = req.user.userId;
 
-    // Get current document content
     const document = await documentService.getDocumentById(documentId, userId);
     if (!document) {
       return res.status(404).json({
@@ -319,16 +318,17 @@ const documentController = {
       });
     }
 
-    const version = await documentService.updateDocument(
+    const result = await documentService.createManualVersion(
       documentId,
-      { title: document.title, content: document.content },
       userId,
-      changeDescription || "Manual version",
-      false
+      changeDescription || "Manual version"
     );
 
-    // Return { document } so client can access response.document
-    res.status(201).json({ document: version });
+    res.status(201).json({
+      document,
+      versionCreated: !result.skipped,
+      skippedReason: result.reason,
+    });
   }),
 
   // Handle document close from frontend

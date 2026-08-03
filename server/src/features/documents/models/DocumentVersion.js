@@ -12,6 +12,10 @@ const documentVersionSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    contentHash: {
+      type: String,
+      index: true,
+    },
     title: {
       type: String,
       required: true,

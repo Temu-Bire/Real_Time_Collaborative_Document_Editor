@@ -72,7 +72,7 @@ const documentService = {
     };
   },
 
-  async updateDocument(documentId, { title, content }, authorId, changeDescription, isAutosave = false) {
+  async updateDocument(documentId, { title, content }, authorId, _changeDescription, isAutosave = true) {
     const updates = {};
     if (title !== undefined) updates.title = title;
     if (content !== undefined) updates.content = content;
@@ -85,36 +85,29 @@ const documentService = {
       .populate("collaborators.user", "name email profilePicture")
       .lean();
 
-    if (document && (title !== undefined || content !== undefined)) {
-      // For auto-save, let VersionService decide if a version should be created
-      if (isAutosave) {
-        // Update the session and check if version should be created
-        const result = versionService.updateSession(documentId, document.content || "");
-        
-        if (result.shouldCreate) {
-          await versionService.createVersion({
-            documentId,
-            authorId,
-            title: document.title,
-            content: document.content || "",
-            reason: result.reason,
-            changeDescription: changeDescription || "Auto-save",
-          });
-        }
-      } else {
-        // Manual save - always create a version
-        await versionService.createVersion({
-          documentId,
-          authorId,
-          title: document.title,
-          content: document.content || "",
-          reason: "manual",
-          changeDescription: changeDescription || "Manual save",
-        });
-      }
+    if (document && isAutosave) {
+      await versionService.handleAutoSave(
+        documentId,
+        authorId,
+        document.title,
+        document.content || ""
+      );
     }
 
     return document;
+  },
+
+  async createManualVersion(documentId, authorId, changeDescription) {
+    const doc = await Document.findById(documentId).lean();
+    if (!doc) return null;
+
+    return versionService.createManualVersion({
+      documentId,
+      authorId,
+      title: doc.title,
+      content: doc.content || "",
+      changeDescription,
+    });
   },
 
   async deleteDocument(documentId) {

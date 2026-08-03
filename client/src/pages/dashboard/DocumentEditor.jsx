@@ -46,6 +46,7 @@ const DocumentEditor = () => {
     unresolveComment,
     getDocumentVersions,
     restoreDocumentVersion,
+    closeDocument,
   } = useDocuments();
 
   const [documentData, setDocumentData] = useState(null);
@@ -66,7 +67,14 @@ const DocumentEditor = () => {
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
 
   const isInitialLoad = useRef(true);
+  const contentRef = useRef(content);
+  const titleRef = useRef(title);
   const isReadOnly = userRole === "Viewer" || userRole === "Commenter";
+
+  useEffect(() => {
+    contentRef.current = content;
+    titleRef.current = title;
+  }, [content, title]);
 
   const handlePresenceChange = useCallback((users, clientId) => {
     setOnlineUsers(users);
@@ -116,6 +124,7 @@ const DocumentEditor = () => {
           title: updatedTitle,
           content: updatedContent,
           changeDescription,
+          isAutosave: true,
         });
 
         if (updatedDoc) {
@@ -143,10 +152,34 @@ const DocumentEditor = () => {
     setSaveStatus("Unsaved changes...");
     const timer = setTimeout(() => {
       saveDocument(title, content, "Auto-save");
-    }, 1500);
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, [content, title, loading, notFound, saveDocument, isReadOnly]);
+
+  const notifyDocumentClose = useCallback(() => {
+    if (isReadOnly || !id) return;
+    closeDocument(id, contentRef.current).catch(() => {});
+  }, [id, closeDocument, isReadOnly]);
+
+  useEffect(() => {
+    if (isReadOnly) return;
+
+    const handleBeforeUnload = () => {
+      notifyDocumentClose();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      notifyDocumentClose();
+    };
+  }, [notifyDocumentClose, isReadOnly]);
+
+  const handleNavigateAway = () => {
+    notifyDocumentClose();
+    navigate("/");
+  };
 
   const handleTitleSave = (newTitle) => {
     if (isReadOnly) return;
@@ -262,7 +295,7 @@ const DocumentEditor = () => {
           <div className="flex items-center gap-2 overflow-hidden flex-1 min-w-0">
             <button
               type="button"
-              onClick={() => navigate("/")}
+              onClick={handleNavigateAway}
               className="p-2 border-none rounded-full bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0 cursor-pointer"
               title="Return to Dashboard"
             >
