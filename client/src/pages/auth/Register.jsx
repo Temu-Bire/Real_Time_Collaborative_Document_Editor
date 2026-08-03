@@ -115,20 +115,20 @@ export default function Register() {
     } catch (error) {
       const response = error.response?.data;
 
-      if (response?.errors && Array.isArray(response.errors)) {
+      if (response?.error?.details && Array.isArray(response.error.details)) {
         const backendErrors = {};
 
-        response.errors.forEach((item) => {
+        response.error.details.forEach((item) => {
           const field =
-            item.path === "name" ? "fullName" : item.path;
+            item.field === "name" ? "fullName" : item.field;
 
-          backendErrors[field] = item.msg;
+          backendErrors[field] = item.message;
         });
 
         setErrors(backendErrors);
       } else {
         setServerError(
-          response?.message || "Registration failed. Please try again."
+          response?.error?.message || "Registration failed. Please try again."
         );
       }
     } finally {

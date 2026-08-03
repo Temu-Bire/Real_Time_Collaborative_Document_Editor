@@ -2,13 +2,22 @@ import api from "./api";
 
 export const register = async (userData) => {
   const response = await api.post("/auth/register", userData);
+  if (response.data.data?.accessToken) {
+    localStorage.setItem("accessToken", response.data.data.accessToken);
+  }
+  if (response.data.data?.user) {
+    localStorage.setItem("user", JSON.stringify(response.data.data.user));
+  }
   return response.data;
 };
 
 export const login = async (credentials) => {
   const response = await api.post("/auth/login", credentials);
-  if (response.data.token) {
-    localStorage.setItem("token", response.data.token);
+  if (response.data.data?.accessToken) {
+    localStorage.setItem("accessToken", response.data.data.accessToken);
+  }
+  if (response.data.data?.user) {
+    localStorage.setItem("user", JSON.stringify(response.data.data.user));
   }
   return response.data;
 };
@@ -25,8 +34,19 @@ export const googleLogin = async (tokenPayload) => {
     body = tokenPayload;
   }
   const response = await api.post("/auth/google", body);
-  if (response.data.token) {
-    localStorage.setItem("token", response.data.token);
+  if (response.data.data?.accessToken) {
+    localStorage.setItem("accessToken", response.data.data.accessToken);
+  }
+  if (response.data.data?.user) {
+    localStorage.setItem("user", JSON.stringify(response.data.data.user));
+  }
+  return response.data;
+};
+
+export const refreshTokens = async () => {
+  const response = await api.post("/auth/refresh");
+  if (response.data.data?.accessToken) {
+    localStorage.setItem("accessToken", response.data.data.accessToken);
   }
   return response.data;
 };
@@ -35,12 +55,16 @@ export const logout = async () => {
   try {
     await api.post("/auth/logout");
   } finally {
-    localStorage.removeItem("token");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
   }
 };
 
 export const getProfile = async () => {
   const response = await api.get("/auth/profile");
+  if (response.data.data?.user) {
+    localStorage.setItem("user", JSON.stringify(response.data.data.user));
+  }
   return response.data;
 };
 
@@ -59,13 +83,20 @@ export const resendVerification = async (email) => {
   return response.data;
 };
 
+export const verifyEmail = async (token) => {
+  const response = await api.get("/auth/verify-email", { params: { token } });
+  return response.data;
+};
+
 export default {
   register,
   login,
   googleLogin,
+  refreshTokens,
   logout,
   getProfile,
   forgotPassword,
   resetPassword,
   resendVerification,
+  verifyEmail,
 };
