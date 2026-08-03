@@ -1,16 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
-
-const EditableTitle = ({ title, onTitleChange, onTitleSave }) => {
+const EditableTitle = ({ title, onTitleChange, onTitleSave, isReadOnly = false }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentTitle, setCurrentTitle] = useState(title);
   const textareaRef = useRef(null);
 
-  // Sync internal state if prop updates externally
   useEffect(() => {
     setCurrentTitle(title);
   }, [title]);
 
-  // Dynamically resize height based on content length
   const adjustHeight = () => {
     const textarea = textareaRef.current;
     if (textarea) {
@@ -35,7 +32,6 @@ const EditableTitle = ({ title, onTitleChange, onTitleSave }) => {
   };
 
   const handleKeyDown = (e) => {
-    // Save on Enter without shift (Shift+Enter allows deliberate multi-line titles if needed)
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       e.target.blur();
@@ -43,8 +39,8 @@ const EditableTitle = ({ title, onTitleChange, onTitleSave }) => {
   };
 
   return (
-    <div className="flex-1 max-w-2xl min-w-[200px]">
-      {isEditing ? (
+    <div className="flex-1 max-w-xl min-w-[180px]">
+      {isEditing && !isReadOnly ? (
         <textarea
           ref={textareaRef}
           value={currentTitle}
@@ -56,13 +52,15 @@ const EditableTitle = ({ title, onTitleChange, onTitleSave }) => {
           onKeyDown={handleKeyDown}
           rows={1}
           autoFocus
-          className="w-full bg-slate-100 dark:bg-slate-700/60 text-slate-900 dark:text-slate-100 font-bold text-lg sm:text-xl px-2 py-1 rounded-lg border border-indigo-500 focus:outline-none resize-none overflow-hidden transition-all leading-snug"
+          className="w-full bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-semibold text-lg sm:text-xl px-2 py-1 rounded border border-indigo-500 outline-none resize-none overflow-hidden leading-tight font-sans"
         />
       ) : (
         <h1
-          onClick={() => setIsEditing(true)}
-          className="font-bold text-lg sm:text-xl text-slate-800 dark:text-slate-100 px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer transition whitespace-pre-wrap break-words leading-snug"
-          title="Click to rename"
+          onClick={() => !isReadOnly && setIsEditing(true)}
+          className={`font-semibold text-lg sm:text-xl text-slate-900 dark:text-slate-100 px-2 py-1 rounded transition-colors whitespace-pre-wrap break-words leading-tight ${
+            !isReadOnly ? "cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/60" : "cursor-default"
+          }`}
+          title={!isReadOnly ? "Click to rename" : title}
         >
           {currentTitle || "Untitled Document"}
         </h1>

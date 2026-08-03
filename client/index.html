@@ -5,6 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SyncWrite</title>
+    <script>
+      (function () {
+        var stored = localStorage.getItem("theme_preference");
+        if (stored === "night") stored = "light";
+        var theme = stored === "light" || stored === "dark" ? stored : "dark";
+        if (theme === "dark") {
+          document.documentElement.classList.add("dark");
+        }
+        document.documentElement.style.colorScheme = theme === "dark" ? "dark" : "light";
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

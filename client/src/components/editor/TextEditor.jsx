@@ -1,95 +1,211 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import TextAlign from "@tiptap/extension-text-align";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
+import * as Y from "yjs";
+import { SocketIOProvider } from "y-socket.io";
 
 import { PageBreak } from "./extensions/PageBreak";
-
 import EditorToolbar from "./EditorToolbar";
 import EditorStats from "./EditorStats";
-import "../../App.css";
+import DocumentPages from "./DocumentPages";
 
-const TextEditor = ({ content, setContent }) => {
-  const [pageCount, setPageCount] = useState(1);
+const CURSOR_COLORS = [
+  "#f59e0b",
+  "#10b981",
+  "#6366f1",
+  "#ec4899",
+  "#8b5cf6",
+  "#ef4444",
+  "#06b6d4",
+  "#84cc16",
+];
+
+const getColorFromName = (name = "") => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length];
+};
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
+
+const TextEditor = ({
+  content,
+  setContent,
+  documentId = "default-doc",
+  userName = "Anonymous",
+  userId,
+  isReadOnly = false,
+  onPresenceChange,
+}) => {
+  const [pageCount] = useState(1);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
+  const [ydoc] = useState(() => new Y.Doc());
+  const initialContentApplied = useRef(false);
+  const userColor = useMemo(() => getColorFromName(userName), [userName]);
 
-  const editor = useEditor({
-    extensions: [
-      // 1. Explicitly configure StarterKit to enable Headings & Lists
-      StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
-        bulletList: {
-          keepMarks: true,
-          keepAttributes: false,
-        },
-        orderedList: {
-          keepMarks: true,
-          keepAttributes: false,
-        },
+  const provider = useMemo(
+    () =>
+      new SocketIOProvider(SOCKET_URL, `document-${documentId}`, ydoc, {
+        autoConnect: true,
       }),
+    [documentId, ydoc]
+  );
 
-      Underline,
+  useEffect(() => {
+    return () => {
+      provider.destroy();
+    };
+  }, [provider]);
 
-      Link.configure({
-        openOnClick: false,
-        autolink: true,
-        linkOnPaste: true,
-      }),
+  useEffect(() => {
+    provider.awareness.setLocalStateField("user", {
+      id: userId || userName,
+      name: userName,
+      color: userColor,
+    });
 
-      TextAlign.configure({
-        types: ["heading", "paragraph"],
-      }),
+    const updatePresence = () => {
+      const states = provider.awareness.getStates();
+      const userMap = new Map();
 
-      PageBreak,
-    ],
+      states.forEach((state, clientId) => {
+        if (state?.user?.name) {
+          const key = state.user.id || state.user.name;
+          if (!userMap.has(key)) {
+            userMap.set(key, {
+              clientId,
+              id: key,
+              name: state.user.name,
+              color: state.user.color,
+            });
+          }
+        }
+      });
 
-    content: content || "",
+      onPresenceChange?.(Array.from(userMap.values()), provider.awareness.clientID);
+    };
 
-    editorProps: {
-      attributes: {
-        class:
-          "prose dark:prose-invert max-w-none text-slate-900 dark:text-slate-100 text-base leading-relaxed focus:outline-none min-h-[500px]",
+    provider.awareness.on("change", updatePresence);
+    updatePresence();
+
+    return () => {
+      provider.awareness.off("change", updatePresence);
+    };
+  }, [provider, userName, userId, userColor, onPresenceChange]);
+
+  const editor = useEditor(
+    {
+      editable: !isReadOnly,
+      extensions: [
+        StarterKit.configure({
+          history: false,
+          heading: { levels: [1, 2, 3] },
+          bulletList: { keepMarks: true, keepAttributes: false },
+          orderedList: { keepMarks: true, keepAttributes: false },
+        }),
+
+        Underline,
+
+        Link.configure({
+          openOnClick: false,
+          autolink: true,
+          linkOnPaste: true,
+        }),
+
+        TextAlign.configure({
+          types: ["heading", "paragraph"],
+        }),
+
+        PageBreak,
+
+        Collaboration.configure({
+          document: ydoc,
+        }),
+
+        CollaborationCaret.configure({
+          provider,
+          user: {
+            name: userName,
+            color: userColor,
+          },
+        }),
+      ],
+
+      editorProps: {
+        attributes: {
+          class: "tiptap-editor-content",
+          spellcheck: "true",
+        },
+      },
+
+      onUpdate({ editor: ed }) {
+        if (isReadOnly) return;
+        const html = ed.getHTML();
+        const text = ed.getText();
+
+        setContent(html);
+
+        const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+        setWordCount(words);
+        setCharCount(text.length);
       },
     },
+    [provider, userName, userColor, ydoc, isReadOnly]
+  );
 
-    onUpdate({ editor }) {
-      const html = editor.getHTML();
-      const text = editor.getText();
-
-      setContent(html);
-
-      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-
-      setWordCount(words);
-      setCharCount(text.length);
-
-      const contentHeight = editor.view.dom.scrollHeight;
-      setPageCount(Math.max(1, Math.ceil(contentHeight / 900)));
-    },
-  });
-
-  // 2. Prevent feedback loops when setting content externally
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content || "", false);
+    if (editor) {
+      editor.setEditable(!isReadOnly);
     }
-  }, [content, editor]);
+  }, [editor, isReadOnly]);
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const seedInitialContent = () => {
+      if (initialContentApplied.current) return;
+
+      const fragment = ydoc.getXmlFragment("default");
+      if (fragment.length === 0 && content) {
+        editor.commands.setContent(content, false);
+      }
+      initialContentApplied.current = true;
+    };
+
+    const onSync = (isSynced) => {
+      if (isSynced) seedInitialContent();
+    };
+
+    provider.on("sync", onSync);
+    if (provider.synced) seedInitialContent();
+
+    return () => {
+      provider.off("sync", onSync);
+    };
+  }, [provider, editor, content, ydoc]);
+
+  useEffect(() => {
+    initialContentApplied.current = false;
+  }, [documentId]);
 
   if (!editor) return null;
 
   return (
-    <div className="w-full flex flex-col items-center document-canvas-container">
-      <EditorToolbar editor={editor} pageCount={pageCount} />
+    <div className="document-canvas">
+      <EditorToolbar editor={editor} pageCount={pageCount} isReadOnly={isReadOnly} />
 
-      <div className="tiptap-page-editor w-full flex justify-center">
+      <DocumentPages pageCount={pageCount}>
         <EditorContent editor={editor} />
-      </div>
+      </DocumentPages>
 
       <EditorStats wordCount={wordCount} charCount={charCount} />
     </div>

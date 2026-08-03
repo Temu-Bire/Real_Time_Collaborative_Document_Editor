@@ -1,0 +1,135 @@
+/* Document editor shell — follows global .dark theme */
+
+.document-editor {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--editor-canvas-bg);
+  color: var(--editor-text);
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+}
+
+.document-editor--centered {
+  justify-content: center;
+  align-items: center;
+}
+
+.document-editor--not-found {
+  flex-direction: column;
+  text-align: center;
+  padding: 24px;
+}
+
+.document-editor-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background-color: var(--editor-header-bg);
+  border-bottom: 1px solid var(--editor-header-border);
+}
+
+.document-editor-header-inner {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.document-editor-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+}
+
+.document-editor-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.document-editor-back-btn {
+  padding: 8px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--editor-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.document-editor-back-btn:hover {
+  background-color: var(--editor-hover-bg);
+}
+
+.document-editor-theme-btn {
+  padding: 8px;
+  border: 1px solid var(--editor-header-border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--editor-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.document-editor-theme-btn:hover {
+  background-color: var(--editor-hover-bg);
+}
+
+.document-editor-save-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  background-color: var(--editor-hover-bg);
+  border: 1px solid var(--editor-header-border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--editor-text-muted);
+}
+
+.document-editor-error {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 12px 16px 0;
+}
+
+.document-editor-main {
+  flex: 1;
+  width: 100%;
+  overflow-y: auto;
+  padding: 24px 16px 48px;
+  display: flex;
+  justify-content: center;
+}
+
+.document-editor--not-found h1 {
+  color: var(--editor-text);
+}
+
+.document-editor--not-found p {
+  color: var(--editor-text-muted);
+}
+
+@media (max-width: 640px) {
+  .document-editor-header-inner {
+    padding: 8px 12px;
+  }
+
+  .document-editor-main {
+    padding: 16px 8px 32px;
+  }
+}

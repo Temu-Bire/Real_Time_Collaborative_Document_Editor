@@ -34,6 +34,66 @@ export const duplicateDocument = async (docToDuplicate) =>
     content: docToDuplicate.content || "",
   });
 
+export const shareDocument = async (id, email, role = "Viewer") => {
+  const response = await api.post(`/documents/${id}/share`, { email, role });
+  return response.data;
+};
+
+export const updateCollaboratorRole = async (id, collaboratorId, role) => {
+  const response = await api.patch(`/documents/${id}/share/${collaboratorId}`, { role });
+  return response.data;
+};
+
+export const removeCollaborator = async (id, collaboratorId) => {
+  const response = await api.delete(`/documents/${id}/share/${collaboratorId}`);
+  return response.data;
+};
+
+export const updatePublicSharing = async (id, isPublic, publicRole = "Viewer") => {
+  const response = await api.patch(`/documents/${id}/public`, { isPublic, publicRole });
+  return response.data;
+};
+
+export const getComments = async (id) => {
+  const response = await api.get(`/documents/${id}/comments`);
+  return response.data;
+};
+
+export const addComment = async (id, content, parentCommentId = null) => {
+  const response = await api.post(`/documents/${id}/comments`, { content, parentCommentId });
+  return response.data;
+};
+
+export const updateComment = async (id, commentId, content) => {
+  const response = await api.patch(`/documents/${id}/comments/${commentId}`, { content });
+  return response.data;
+};
+
+export const deleteComment = async (id, commentId) => {
+  const response = await api.delete(`/documents/${id}/comments/${commentId}`);
+  return response.data;
+};
+
+export const resolveComment = async (id, commentId) => {
+  const response = await api.patch(`/documents/${id}/comments/${commentId}/resolve`);
+  return response.data;
+};
+
+export const unresolveComment = async (id, commentId) => {
+  const response = await api.patch(`/documents/${id}/comments/${commentId}/unresolve`);
+  return response.data;
+};
+
+export const getDocumentVersions = async (id, params = {}) => {
+  const response = await api.get(`/documents/${id}/versions`, { params });
+  return response.data;
+};
+
+export const restoreDocumentVersion = async (id, versionNumber) => {
+  const response = await api.post(`/documents/${id}/versions/restore`, { versionNumber });
+  return response.data;
+};
+
 export default {
   createDocument,
   getDocuments,
@@ -42,4 +102,16 @@ export default {
   deleteDocument,
   renameDocument,
   duplicateDocument,
+  shareDocument,
+  updateCollaboratorRole,
+  removeCollaborator,
+  updatePublicSharing,
+  getComments,
+  addComment,
+  updateComment,
+  deleteComment,
+  resolveComment,
+  unresolveComment,
+  getDocumentVersions,
+  restoreDocumentVersion,
 };

@@ -1,16 +1,27 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Edit2, Copy, Check, X, FileText, Trash2 } from "lucide-react";
+import { Edit2, Copy, Check, X, FileText, Trash2, Share2, Users } from "lucide-react";
 import DeleteConfirmationModal from "./DeleteConfirmationModal";
 import { normalizeDocument } from "../../utils/documentUtils";
 
-const DocumentCard = ({ document: rawDoc, onDelete, onRename, onDuplicate }) => {
+const ROLE_BADGE = {
+  Owner: "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
+  Editor: "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+  Commenter: "bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+  Viewer: "bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+};
+
+const DocumentCard = ({ document: rawDoc, onDelete, onRename, onDuplicate, onShare }) => {
   const navigate = useNavigate();
   const doc = normalizeDocument(rawDoc);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newTitle, setNewTitle] = useState(doc.title);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const isOwner = doc.isOwner !== false;
+  const userRole = doc.userRole || (isOwner ? "Owner" : "Viewer");
+  const isSharedWithMe = !isOwner;
 
   const handleSaveRename = (e) => {
     e.stopPropagation();
@@ -38,17 +49,29 @@ const DocumentCard = ({ document: rawDoc, onDelete, onRename, onDuplicate }) => 
     }
   };
 
+  const cardCursor = !isRenaming ? "cursor-pointer" : "cursor-default";
+
   return (
     <>
       <div
         onClick={() => !isRenaming && navigate(`/documents/${doc.id}`)}
-        className="p-5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col justify-between gap-4 min-h-[140px]"
+        className={`relative group p-5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between gap-4 min-h-[150px] ${cardCursor}`}
       >
-        <div className="flex items-start justify-between gap-2">
+        {/* Shared-with-me banner */}
+        {isSharedWithMe && (
+          <div className="absolute top-0 left-0 right-0 flex items-center gap-1.5 px-3 py-1 bg-slate-50 dark:bg-slate-700/60 border-b border-slate-100 dark:border-slate-700 rounded-t-2xl">
+            <Users className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+              Shared with you
+            </span>
+          </div>
+        )}
+
+        <div className={`flex items-start justify-between gap-2 ${isSharedWithMe ? "mt-5" : ""}`}>
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
             <FileText className="w-5 h-5 text-indigo-500 shrink-0" />
 
-            {isRenaming ? (
+            {isRenaming && isOwner ? (
               <div
                 className="flex items-center gap-1 w-full"
                 onClick={(e) => e.stopPropagation()}
@@ -83,51 +106,76 @@ const DocumentCard = ({ document: rawDoc, onDelete, onRename, onDuplicate }) => 
             )}
           </div>
 
+          {/* Action buttons — shown on hover */}
           {!isRenaming && (
             <div
-              className="flex items-center gap-1 shrink-0"
+              className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                type="button"
-                onClick={() => setIsRenaming(true)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
-                title="Rename Document"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onDuplicate(doc)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
-                title="Duplicate Document"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(true)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
-                title="Delete Document"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {isOwner && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsRenaming(true)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                    title="Rename Document"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDuplicate(doc)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                    title="Duplicate Document"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                  {onShare && (
+                    <button
+                      type="button"
+                      onClick={() => onShare(doc)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                      title="Share Document"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteModal(true)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                    title="Delete Document"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
 
-        <div className="text-xs text-slate-400 dark:text-slate-500">
-          Updated {new Date(doc.updatedAt || Date.now()).toLocaleDateString()}
+        {/* Footer: date + role badge */}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-slate-400 dark:text-slate-500">
+            Updated {new Date(doc.updatedAt || Date.now()).toLocaleDateString()}
+          </span>
+          <span
+            className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${ROLE_BADGE[userRole] || ROLE_BADGE.Viewer}`}
+          >
+            {userRole}
+          </span>
         </div>
       </div>
 
-      <DeleteConfirmationModal
-        isOpen={showDeleteModal}
-        message={`Are you sure you want to delete "${doc.title || "Untitled Document"}"? This action cannot be undone.`}
-        onCancel={() => setShowDeleteModal(false)}
-        onConfirm={handleConfirmDelete}
-        loading={deleting}
-      />
+      {isOwner && (
+        <DeleteConfirmationModal
+          isOpen={showDeleteModal}
+          message={`Are you sure you want to delete "${doc.title || "Untitled Document"}"? This action cannot be undone.`}
+          onCancel={() => setShowDeleteModal(false)}
+          onConfirm={handleConfirmDelete}
+          loading={deleting}
+        />
+      )}
     </>
   );
 };

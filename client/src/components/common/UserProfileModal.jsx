@@ -40,9 +40,9 @@ const UserProfileModal = ({ isOpen, onClose }) => {
   };
 
   const themeOptions = [
-    { id: "dark", label: "Dark (Gray)", icon: Moon, color: "text-indigo-400" },
-    { id: "night", label: "Night (Warm White)", icon: Sun, color: "text-orange-500" },
-    ];
+    { id: "light", label: "Light", icon: Sun, color: "text-amber-500" },
+    { id: "dark", label: "Dark", icon: Moon, color: "text-indigo-400" },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
@@ -122,7 +122,7 @@ const UserProfileModal = ({ isOpen, onClose }) => {
               <Palette className="w-3.5 h-3.5 text-indigo-500" />
               Appearance Theme
             </label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2">
               {themeOptions.map((item) => {
                 const IconComponent = item.icon;
                 const isSelected = theme === item.id;

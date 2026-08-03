@@ -132,6 +132,61 @@ export const DocumentProvider = ({ children }) => {
 
   const clearError = () => setError("");
 
+  const shareDocument = async (id, email, role) => {
+    const response = await documentService.shareDocument(id, email, role);
+    return normalizeDocument(response.document);
+  };
+
+  const updateCollaboratorRole = async (id, collaboratorId, role) => {
+    const response = await documentService.updateCollaboratorRole(id, collaboratorId, role);
+    return normalizeDocument(response.document);
+  };
+
+  const removeCollaborator = async (id, collaboratorId) => {
+    const response = await documentService.removeCollaborator(id, collaboratorId);
+    return normalizeDocument(response.document);
+  };
+
+  const getComments = async (id) => {
+    const response = await documentService.getComments(id);
+    return response.comments || [];
+  };
+
+  const addComment = async (id, content, parentCommentId = null) => {
+    const response = await documentService.addComment(id, content, parentCommentId);
+    return response.comment;
+  };
+
+  const updateComment = async (id, commentId, content) => {
+    const response = await documentService.updateComment(id, commentId, content);
+    return response.comment;
+  };
+
+  const deleteComment = async (id, commentId) => {
+    const response = await documentService.deleteComment(id, commentId);
+    return response;
+  };
+
+  const resolveComment = async (id, commentId) => {
+    const response = await documentService.resolveComment(id, commentId);
+    return response.comment;
+  };
+
+  const unresolveComment = async (id, commentId) => {
+    const response = await documentService.unresolveComment(id, commentId);
+    return response.comment;
+  };
+
+  const getDocumentVersions = async (id, params = {}) => {
+    const response = await documentService.getDocumentVersions(id, params);
+    return response;
+  };
+
+  const restoreDocumentVersion = async (id, versionNumber) => {
+    const response = await documentService.restoreDocumentVersion(id, versionNumber);
+    return normalizeDocument(response.document);
+  };
+
   const value = {
     documents,
     loading,
@@ -147,6 +202,17 @@ export const DocumentProvider = ({ children }) => {
     deleteDocument,
     duplicateDocument,
     renameDocument,
+    shareDocument,
+    updateCollaboratorRole,
+    removeCollaborator,
+    getComments,
+    addComment,
+    updateComment,
+    deleteComment,
+    resolveComment,
+    unresolveComment,
+    getDocumentVersions,
+    restoreDocumentVersion,
     changePage,
     changeSearch,
     changeLimit,

@@ -1,58 +1,299 @@
 @import "tailwindcss";
 
-/* Night Mode (Warm Soft White / Eye-Care Reading Mode) */
-html.night {
+/*
+ * Class-based dark mode — NOT prefers-color-scheme.
+ * ThemeContext toggles the .dark class on <html>.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Global theme tokens (app + editor) ── */
+:root {
   color-scheme: light;
-  background-color: #faf7f2 !important;
+
+  --app-bg: #f8fafc;
+  --app-surface: #ffffff;
+  --app-text: #0f172a;
+  --app-text-muted: #64748b;
+  --app-border: #e2e8f0;
+
+  --editor-canvas-bg: #f1f3f4;
+  --editor-header-bg: #ffffff;
+  --editor-header-border: #dadce0;
+  --editor-toolbar-bg: #ffffff;
+  --editor-toolbar-border: #dadce0;
+  --editor-toolbar-text: #444746;
+  --editor-toolbar-hover: #f1f3f4;
+  --editor-toolbar-active-bg: #e8f0fe;
+  --editor-toolbar-active-text: #1a73e8;
+  --editor-stats-bg: #ffffff;
+  --editor-page-bg: #ffffff;
+  --editor-page-border: #dadce0;
+  --editor-page-shadow: 0 1px 3px rgba(60, 64, 67, 0.16), 0 4px 8px rgba(60, 64, 67, 0.08);
+  --editor-text: #202124;
+  --editor-text-muted: #5f6368;
+  --editor-text-subtle: #80868b;
+  --editor-link: #1155cc;
+  --editor-accent: #1a73e8;
+  --editor-caret: #202124;
+  --editor-blockquote-border: #dadce0;
+  --editor-blockquote-text: #5f6368;
+  --editor-page-break-bg: #f1f3f4;
+  --editor-page-break-border: #dadce0;
+  --editor-input-bg: #f1f3f4;
+  --editor-input-border: #1a73e8;
+  --editor-hover-bg: #f1f3f4;
+  --editor-avatar-ring: #ffffff;
+  --editor-overflow-bg: #e8eaed;
+  --editor-selection-outline: #1a73e8;
 }
 
-html.night body {
-  background-color: #faf7f2 !important;
-  color: #27272a !important;
+.dark {
+  color-scheme: dark;
+
+  --app-bg: #0f172a;
+  --app-surface: #1e293b;
+  --app-text: #f1f5f9;
+  --app-text-muted: #94a3b8;
+  --app-border: #334155;
+
+  --editor-canvas-bg: #0f172a;
+  --editor-header-bg: #1e293b;
+  --editor-header-border: #334155;
+  --editor-toolbar-bg: #1e293b;
+  --editor-toolbar-border: #334155;
+  --editor-toolbar-text: #f1f5f9;
+  --editor-toolbar-hover: #334155;
+  --editor-toolbar-active-bg: #312e81;
+  --editor-toolbar-active-text: #a5b4fc;
+  --editor-stats-bg: #1e293b;
+  --editor-page-bg: #1e293b;
+  --editor-page-border: #334155;
+  --editor-page-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --editor-text: #f1f5f9;
+  --editor-text-muted: #94a3b8;
+  --editor-text-subtle: #64748b;
+  --editor-link: #818cf8;
+  --editor-accent: #6366f1;
+  --editor-caret: #f1f5f9;
+  --editor-blockquote-border: #475569;
+  --editor-blockquote-text: #94a3b8;
+  --editor-page-break-bg: #0f172a;
+  --editor-page-break-border: #475569;
+  --editor-input-bg: #334155;
+  --editor-input-border: #6366f1;
+  --editor-hover-bg: #334155;
+  --editor-avatar-ring: #1e293b;
+  --editor-overflow-bg: #334155;
+  --editor-selection-outline: #6366f1;
 }
 
-html.night .bg-slate-50,
-html.night .bg-slate-100,
-html.night .dark\:bg-slate-900,
-html.night .dark\:bg-slate-900\/90,
-html.night .dark\:bg-slate-900\/80,
-html.night .dark\:bg-slate-900\/60 {
-  background-color: #faf7f2 !important;
+html,
+body {
+  background-color: var(--app-bg);
+  color: var(--app-text);
 }
 
-html.night .bg-white,
-html.night .dark\:bg-slate-800,
-html.night .dark\:bg-slate-800\/95,
-html.night .dark\:bg-slate-800\/90,
-html.night .dark\:bg-slate-800\/80,
-html.night .dark\:bg-slate-800\/50 {
-  background-color: #ffffff !important;
+/* Editor canvas container */
+.document-canvas {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-html.night .border-slate-200,
-html.night .border-slate-300,
-html.night .dark\:border-slate-800,
-html.night .dark\:border-slate-700,
-html.night .dark\:border-slate-700\/80,
-html.night .dark\:border-slate-700\/60 {
-  border-color: #e4e4e7 !important;
+/* Document pages container */
+.document-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
 }
 
-html.night .dark\:text-slate-100,
-html.night .dark\:text-slate-200,
-html.night .dark\:text-white {
-  color: #18181b !important;
+/* A4 page: 210mm × 297mm */
+.document-page {
+  width: 210mm;
+  height: 297mm;
+  background-color: var(--editor-page-bg);
+  box-shadow: var(--editor-page-shadow);
+  border: 1px solid var(--editor-page-border);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
 }
 
-html.night .dark\:text-slate-400,
-html.night .dark\:text-slate-500 {
-  color: #71717a !important;
+.document-page-body {
+  flex: 1;
+  min-height: 0;
+  padding: 25.4mm 25.4mm 12mm;
+  overflow: hidden;
 }
 
-html.night input,
-html.night select,
-html.night textarea {
-  background-color: #ffffff !important;
-  border-color: #e4e4e7 !important;
-  color: #18181b !important;
+.document-page-body > div {
+  height: 100%;
+}
+
+.document-page-footer {
+  flex-shrink: 0;
+  height: 12mm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.document-page-number {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--editor-text-muted);
+  user-select: none;
+}
+
+@media (max-width: 820px) {
+  .document-page {
+    width: calc(100vw - 32px);
+    height: calc((100vw - 32px) * 297 / 210);
+  }
+}
+
+/* Tiptap ProseMirror styling */
+.document-page-body .ProseMirror {
+  height: 100%;
+  max-width: none;
+  overflow: hidden;
+  outline: none;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11pt;
+  line-height: 1.5;
+  color: var(--editor-text);
+  caret-color: var(--editor-caret);
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.document-page-body .ProseMirror:focus {
+  outline: none;
+}
+
+.document-page-body .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--editor-text-muted);
+  pointer-events: none;
+  height: 0;
+}
+
+.document-page-body .ProseMirror h1 {
+  font-size: 20pt;
+  font-weight: 400;
+  line-height: 1.25;
+  margin: 0 0 12pt;
+  color: var(--editor-text);
+}
+
+.document-page-body .ProseMirror h2 {
+  font-size: 16pt;
+  font-weight: 400;
+  line-height: 1.35;
+  margin: 18pt 0 6pt;
+  color: var(--editor-text);
+}
+
+.document-page-body .ProseMirror h3 {
+  font-size: 14pt;
+  font-weight: 400;
+  line-height: 1.35;
+  margin: 16pt 0 4pt;
+  color: var(--editor-text);
+}
+
+.document-page-body .ProseMirror p {
+  margin: 0 0 12pt;
+}
+
+.document-page-body .ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.75rem;
+  margin: 0 0 12pt;
+}
+
+.document-page-body .ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.75rem;
+  margin: 0 0 12pt;
+}
+
+.document-page-body .ProseMirror li {
+  margin: 0 0 4pt;
+}
+
+.document-page-body .ProseMirror li p {
+  margin: 0;
+}
+
+.document-page-body .ProseMirror a {
+  color: var(--editor-link);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.document-page-body .ProseMirror blockquote {
+  border-left: 3px solid var(--editor-blockquote-border);
+  padding-left: 16px;
+  margin: 0 0 12pt;
+  color: var(--editor-blockquote-text);
+}
+
+.document-page-body .ProseMirror .page-break {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  margin: 16px -25.4mm;
+  background-color: var(--editor-page-break-bg);
+  border-top: 1px dashed var(--editor-page-break-border);
+  border-bottom: 1px dashed var(--editor-page-break-border);
+  user-select: none;
+  cursor: default;
+}
+
+.document-page-body .ProseMirror .page-break::after {
+  content: "— PAGE BREAK —";
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--editor-text-subtle);
+}
+
+.document-page-body .ProseMirror .collaboration-carets__caret {
+  border-left: 2px solid;
+  border-right: 2px solid;
+  margin-left: -1px;
+  margin-right: -1px;
+  pointer-events: none;
+  position: relative;
+  word-break: normal;
+}
+
+.document-page-body .ProseMirror .collaboration-carets__label {
+  border-radius: 4px 4px 4px 0;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  left: -1px;
+  line-height: normal;
+  padding: 2px 6px;
+  position: absolute;
+  top: -1.5em;
+  user-select: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.document-page-body .ProseMirror-selectednode {
+  outline: 2px solid var(--editor-selection-outline);
 }

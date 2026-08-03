@@ -18,6 +18,36 @@ const documentSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+
+    collaborators: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        role: {
+          type: String,
+          enum: ["Viewer", "Commenter", "Editor"],
+          default: "Viewer",
+        },
+        addedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
+    isPublic: {
+      type: Boolean,
+      default: false,
+    },
+
+    publicRole: {
+      type: String,
+      enum: ["Viewer", "Commenter", "Editor"],
+      default: "Viewer",
+    },
   },
   {
     timestamps: true,
@@ -25,6 +55,7 @@ const documentSchema = new mongoose.Schema(
 );
 
 documentSchema.index({ owner: 1, updatedAt: -1 });
+documentSchema.index({ "collaborators.user": 1 });
 documentSchema.index({ title: "text" });
 
 module.exports = mongoose.model("Document", documentSchema);

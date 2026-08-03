@@ -8,6 +8,7 @@ import EmptyState from "../../components/common/EmptyState";
 import ErrorAlert from "../../components/common/ErrorAlert";
 import Pagination from "../../components/common/Pagination";
 import DocumentCard from "../../components/documents/DocumentCard";
+import ShareModal from "../../components/documents/ShareModal";
 import { useDocuments } from "../../context/DocumentContext";
 import { getErrorMessage } from "../../utils/getErrorMessage";
 
@@ -30,10 +31,16 @@ const Dashboard = () => {
     changeSearch,
     changeLimit,
     clearError,
+    shareDocument,
+    updateCollaboratorRole,
+    removeCollaborator,
   } = useDocuments();
 
   const [searchInput, setSearchInput] = useState(searchQuery);
   const [actionError, setActionError] = useState("");
+
+  // Dashboard-level Share Modal state
+  const [shareTarget, setShareTarget] = useState(null); // the doc being shared
 
   useEffect(() => {
     fetchDocuments();
@@ -91,6 +98,25 @@ const Dashboard = () => {
   const handleClearSearch = () => {
     setSearchInput("");
     changeSearch("");
+  };
+
+  // Share handlers
+  const handleOpenShare = (doc) => setShareTarget(doc);
+  const handleCloseShare = () => setShareTarget(null);
+
+  const handleShareSubmit = async (docId, email, role) => {
+    const updated = await shareDocument(docId, email, role);
+    setShareTarget(updated);
+  };
+
+  const handleUpdateRole = async (docId, collaboratorId, role) => {
+    const updated = await updateCollaboratorRole(docId, collaboratorId, role);
+    setShareTarget(updated);
+  };
+
+  const handleRemoveCollaborator = async (docId, collaboratorId) => {
+    const updated = await removeCollaborator(docId, collaboratorId);
+    setShareTarget(updated);
   };
 
   const displayError = actionError || error;
@@ -208,6 +234,7 @@ const Dashboard = () => {
                   onDelete={handleDeleteDocument}
                   onRename={handleRenameDocument}
                   onDuplicate={handleDuplicateDocument}
+                  onShare={handleOpenShare}
                 />
               ))}
             </div>
@@ -220,6 +247,16 @@ const Dashboard = () => {
           </>
         )}
       </main>
+
+      {/* Dashboard-level Share Modal */}
+      <ShareModal
+        isOpen={!!shareTarget}
+        onClose={handleCloseShare}
+        document={shareTarget}
+        onShare={handleShareSubmit}
+        onUpdateRole={handleUpdateRole}
+        onRemoveCollaborator={handleRemoveCollaborator}
+      />
     </div>
   );
 };

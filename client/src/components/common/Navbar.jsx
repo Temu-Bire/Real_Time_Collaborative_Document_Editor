@@ -17,7 +17,7 @@ import UserProfileModal from "./UserProfileModal";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
-  const { theme, resolvedTheme, toggleTheme } = useTheme();
+  const { theme, isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -43,15 +43,12 @@ const Navbar = () => {
     navigate("/login");
   };
 
-  const renderThemeIcon = () => {
-    if (resolvedTheme === "night") {
-      return <Sun className="w-4 h-4 text-orange-500" />;
-    }
-    if (resolvedTheme === "dark") {
-      return <Moon className="w-4 h-4 text-indigo-400" />;
-    }
-    return <Sun className="w-4 h-4 text-amber-500" />;
-  };
+  const renderThemeIcon = () =>
+    isDark ? (
+      <Sun className="w-4 h-4 text-amber-500" />
+    ) : (
+      <Moon className="w-4 h-4 text-indigo-500" />
+    );
 
   return (
     <>
@@ -76,10 +73,10 @@ const Navbar = () => {
             <button
               onClick={toggleTheme}
               className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none flex items-center gap-2 text-xs font-semibold"
-              title={`Active Theme: ${theme.toUpperCase()} (Click to toggle  Dark  Or Night)`}
+              title={`Switch to ${isDark ? "light" : "dark"} mode`}
             >
               {renderThemeIcon()}
-              <span className="capitalize hidden sm:inline">{theme}</span>
+              <span className="capitalize hidden sm:inline">{isDark ? "Light" : "Dark"}</span>
             </button>
 
             {/* User Dropdown Menu */}
