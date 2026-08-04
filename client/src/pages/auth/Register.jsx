@@ -17,7 +17,7 @@ import { useAuth } from "../../context/AuthContext";
 
 export default function Register() {
   const navigate = useNavigate();
-  const { register, googleLogin } = useAuth();
+  const { register, googleLogin, login } = useAuth();
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -107,11 +107,22 @@ export default function Register() {
         password: formData.password,
       });
 
-      navigate("/verify-email", {
-        state: {
+      // Auto-login after registering so the user lands straight on the
+      // dashboard. Falls back to the email-verification screen if the
+      // automatic sign-in fails for any reason.
+      try {
+        await login({
           email: formData.email,
-        },
-      });
+          password: formData.password,
+        });
+        navigate("/dashboard");
+      } catch {
+        navigate("/verify-email", {
+          state: {
+            email: formData.email,
+          },
+        });
+      }
     } catch (error) {
       const response = error.response?.data;
 
