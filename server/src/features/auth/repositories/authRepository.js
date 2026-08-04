@@ -57,7 +57,25 @@ const authRepository = {
   },
 
   async updateWithSensitiveFields(userId, updateData) {
-    const user = await User.findByIdAndUpdate(userId, updateData, {
+    // Mongoose silently drops `undefined` values, which would leave token
+    // fields in place. Convert them into $unset so consumed verification and
+    // reset tokens are actually cleared from the document.
+    const setFields = {};
+    const unsetFields = {};
+    Object.entries(updateData || {}).forEach(([key, value]) => {
+      if (value === undefined) {
+        unsetFields[key] = "";
+      } else {
+        setFields[key] = value;
+      }
+    });
+
+    const update = {
+      ...(Object.keys(setFields).length > 0 && { $set: setFields }),
+      ...(Object.keys(unsetFields).length > 0 && { $unset: unsetFields }),
+    };
+
+    const user = await User.findByIdAndUpdate(userId, update, {
       new: true,
       runValidators: true,
     }).select(

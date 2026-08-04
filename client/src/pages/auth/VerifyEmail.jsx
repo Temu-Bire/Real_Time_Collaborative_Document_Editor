@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import {
   MailCheck,
   Edit3,
@@ -12,15 +12,50 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function VerifyEmail() {
   const location = useLocation();
-  const { resendVerification } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { resendVerification, verifyEmail } = useAuth();
 
   // Email is passed via router state from the Register page
   const userEmail = location.state?.email || '';
+
+  // Token comes from the verification link: /verify-email?token=xxx
+  const token = searchParams.get('token') || '';
 
   const [isResending, setIsResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
   const [resendError, setResendError] = useState(null);
   const [countdown, setCountdown] = useState(0);
+
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifySuccess, setVerifySuccess] = useState(false);
+  const [verifyError, setVerifyError] = useState(null);
+
+  // When opened from the link in the verification email, confirm the token.
+  useEffect(() => {
+    if (!token) return;
+
+    let active = true;
+    setIsVerifying(true);
+    (async () => {
+      try {
+        await verifyEmail(token);
+        if (active) setVerifySuccess(true);
+      } catch (err) {
+        if (active) {
+          setVerifyError(
+            err.response?.data?.message ||
+              'This verification link is invalid or has expired.'
+          );
+        }
+      } finally {
+        if (active) setIsVerifying(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [token, verifyEmail]);
 
   // Countdown timer for resend cooldown
   useEffect(() => {
@@ -67,10 +102,12 @@ export default function VerifyEmail() {
         </div>
 
         <h2 className="mt-4 text-center text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Verify your email
+          {token ? 'Verify your email' : 'Check your inbox'}
         </h2>
         <p className="mt-2 text-center text-sm text-slate-600">
-          We&apos;ve sent a verification link to your email address to activate your SyncWrite account.
+          {token
+            ? 'Confirming your email address to activate your SyncWrite account.'
+            : 'We&apos;ve sent a verification link to your email address to activate your SyncWrite account.'}
         </p>
       </div>
 
@@ -82,77 +119,132 @@ export default function VerifyEmail() {
             <MailCheck className="h-8 w-8" />
           </div>
 
-          {/* Dynamic Email Box */}
-          {userEmail && (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 mb-6">
-              <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">
-                Sent to
-              </p>
-              <p className="text-sm font-semibold text-slate-900 break-all">
-                {userEmail}
-              </p>
-            </div>
-          )}
-
-          {/* Status Banners */}
-          {resendSuccess && (
-            <div className="mb-6 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 justify-center">
-              <CheckCircle className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-              <span>A new verification email has been sent!</span>
-            </div>
-          )}
-
-          {resendError && (
-            <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2 justify-center">
-              <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-              <span>{resendError}</span>
-            </div>
-          )}
-
-          <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-            Click on the link in the email to confirm your address. If you don&apos;t see it, check your spam folder.
-          </p>
-
-          {/* Resend Button */}
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={handleResendEmail}
-              disabled={isResending || countdown > 0}
-              className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-slate-300 rounded-lg shadow-sm bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-150"
-            >
-              {isResending ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  <span>Sending email...</span>
-                </>
-              ) : countdown > 0 ? (
-                <>
-                  <RefreshCw className="h-4 w-4 text-slate-400" />
-                  <span>Resend email in {countdown}s</span>
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  <span>Resend verification email</span>
-                </>
+          {token ? (
+            /* ---- Verification link mode ---- */
+            isVerifying ? (
+              <div className="flex flex-col items-center gap-3 py-4">
+                <svg className="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <p className="text-sm text-slate-600">Verifying your email&hellip;</p>
+              </div>
+            ) : verifySuccess ? (
+              <>
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-emerald-100 mb-4">
+                  <CheckCircle className="h-6 w-6 text-emerald-600" />
+                </div>
+                <h3 className="text-lg font-medium text-slate-900 mb-2">Email verified!</h3>
+                <p className="text-sm text-slate-600 mb-6">
+                  Your email address has been confirmed. You can now sign in.
+                </p>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 border border-transparent rounded-lg shadow-sm bg-indigo-600 text-sm font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-150"
+                >
+                  Sign In
+                </Link>
+              </>
+            ) : (
+              <>
+                <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm flex items-start gap-2 justify-center text-left">
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <span>
+                    {verifyError}
+                    <span className="block mt-1">
+                      Request a new{' '}
+                      <Link to="/register" className="underline font-semibold">
+                        verification link
+                      </Link>
+                      .
+                    </span>
+                  </span>
+                </div>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 border border-slate-300 rounded-lg shadow-sm bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-150"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Back to sign in</span>
+                </Link>
+              </>
+            )
+          ) : (
+            /* ---- Check inbox / resend mode ---- */
+            <>
+              {/* Dynamic Email Box */}
+              {userEmail && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 mb-6">
+                  <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">
+                    Sent to
+                  </p>
+                  <p className="text-sm font-semibold text-slate-900 break-all">
+                    {userEmail}
+                  </p>
+                </div>
               )}
-            </button>
-          </div>
 
-          {/* Back to Sign In */}
-          <div className="mt-6 border-t border-slate-100 pt-5 flex justify-center">
-            <Link
-              to="/login"
-              className="flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back to sign in</span>
-            </Link>
-          </div>
+              {/* Status Banners */}
+              {resendSuccess && (
+                <div className="mb-6 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 justify-center">
+                  <CheckCircle className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                  <span>A new verification email has been sent!</span>
+                </div>
+              )}
+
+              {resendError && (
+                <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2 justify-center">
+                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                  <span>{resendError}</span>
+                </div>
+              )}
+
+              <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+                Click on the link in the email to confirm your address. If you don&apos;t see it, check your spam folder.
+              </p>
+
+              {/* Resend Button */}
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={handleResendEmail}
+                  disabled={isResending || countdown > 0 || !userEmail}
+                  className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-slate-300 rounded-lg shadow-sm bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-150"
+                >
+                  {isResending ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4 text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      <span>Sending email...</span>
+                    </>
+                  ) : countdown > 0 ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 text-slate-400" />
+                      <span>Resend email in {countdown}s</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4" />
+                      <span>Resend verification email</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Back to Sign In */}
+              <div className="mt-6 border-t border-slate-100 pt-5 flex justify-center">
+                <Link
+                  to="/login"
+                  className="flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Back to sign in</span>
+                </Link>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="mt-6 text-center">

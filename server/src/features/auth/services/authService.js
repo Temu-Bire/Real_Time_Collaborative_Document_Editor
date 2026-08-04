@@ -11,6 +11,11 @@ const {
   REFRESH_TOKEN_EXPIRY,
 } = require("../../../shared/utils/tokenUtils");
 const { logger } = require("../../../shared/utils/logger");
+const {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  getClientOrigin,
+} = require("../../../shared/services/emailService");
 const authConfig = require("../../../config/auth");
 
 const googleClient = new OAuth2Client(authConfig.google.clientId);
@@ -60,12 +65,14 @@ const authService = {
       emailVerificationExpires: verificationExpires,
     });
 
-    // TODO: Send verification email using email service
-    // await emailService.sendVerificationEmail(user.email, verificationToken);
-    logger.info(
-      { userId: user._id, email: user.email },
-      "Registration successful, verification email would be sent"
-    );
+    // Send the verification email. A delivery failure is logged but does not
+    // fail registration, so sign-up remains usable while SMTP is configured.
+    try {
+      await sendVerificationEmail(user.email, verificationToken);
+    } catch (error) {
+      logger.warn({ userId: user._id, error: error.message }, "Verification email delivery failed");
+    }
+    logger.info({ userId: user._id, email: user.email }, "Registration successful");
 
     return {
       message: "User registered successfully. Please verify your email.",
@@ -336,11 +343,14 @@ const authService = {
       passwordResetExpires: resetExpires,
     });
 
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+    const resetUrl = `${getClientOrigin()}/reset-password?token=${resetToken}`;
 
-    // TODO: Send reset email using email service
-    // await emailService.sendPasswordResetEmail(user.email, resetUrl);
-    logger.info({ userId: user._id, email: user.email }, "Password reset email would be sent");
+    try {
+      await sendPasswordResetEmail(user.email, resetToken);
+    } catch (error) {
+      logger.warn({ userId: user._id, error: error.message }, "Password reset email delivery failed");
+    }
+    logger.info({ userId: user._id, email: user.email }, "Password reset email prepared");
 
     return {
       message: "If an account with that email exists, a reset link has been sent.",
@@ -412,9 +422,12 @@ const authService = {
       emailVerificationExpires: verificationExpires,
     });
 
-    // TODO: Send verification email
-    // await emailService.sendVerificationEmail(user.email, verificationToken);
-    logger.info({ userId: user._id, email: user.email }, "Verification email would be sent");
+    try {
+      await sendVerificationEmail(user.email, verificationToken);
+    } catch (error) {
+      logger.warn({ userId: user._id, error: error.message }, "Verification email delivery failed");
+    }
+    logger.info({ userId: user._id, email: user.email }, "Verification email prepared");
 
     return {
       message: "Verification email sent.",

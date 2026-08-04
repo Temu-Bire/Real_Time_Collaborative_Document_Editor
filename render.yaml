@@ -24,6 +24,23 @@ services:
       # URL of the deployed frontend, e.g. https://syncwrite-ui.onrender.com
       - key: CLIENT_URL
         sync: false
+      # Single public URL of the deployed frontend used to build links inside
+      # transactional emails (email verification / password reset). Must NOT be
+      # a localhost URL. Falls back to the first non-localhost CLIENT_URL entry.
+      - key: CLIENT_ORIGIN
+        sync: false
+      # Transactional email via SMTP (Gmail app password, Brevo, SendGrid,
+      # Mailgun, Zoho...). Without these, emails are logged instead of sent.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
       # MongoDB connection string (Atlas recommended)
       - key: MONGO_URI
         sync: false

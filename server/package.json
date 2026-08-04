@@ -23,6 +23,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.8.1",
+    "nodemailer": "^9.0.4",
     "pino": "^9.3.2",
     "pino-pretty": "^11.2.2",
     "socket.io": "^4.8.3",
