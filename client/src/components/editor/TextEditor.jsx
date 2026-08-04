@@ -82,9 +82,11 @@ const TextEditor = ({
     () =>
       new SocketIOProvider(SOCKET_URL, `document-${documentId}`, ydoc, {
         autoConnect: true,
-        // Function form: Socket.IO calls this on every (re)connect so a
-        // freshly refreshed access token is always used.
-        auth: () => ({ token: getAccessToken() }),
+        // Callback form: Socket.IO calls this on every (re)connect with a
+        // callback it expects us to invoke with the auth payload, so a freshly
+        // refreshed access token is always used. Returning the payload instead
+        // of invoking the callback would leave the CONNECT packet unsent.
+        auth: (cb) => cb({ token: getAccessToken() }),
       }),
     [documentId, ydoc]
   );
