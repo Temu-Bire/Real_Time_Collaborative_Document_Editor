@@ -2,10 +2,25 @@ const rateLimit = require("express-rate-limit");
 const { logger } = require("../../../shared/utils/logger");
 const authConfig = require("../../../config/auth");
 
+// Requests that should never be rate limited:
+//  - health checks
+//  - authentication endpoints (login/register/refresh/etc.)
+//  - document saves / autosave (PUT /api/documents/:id) and document close,
+//    which fire frequently while editing
+const isExempt = (req) => {
+  const url = req.originalUrl || "";
+  if (url.startsWith("/api/health")) return true;
+  if (url.startsWith("/api/auth")) return true;
+  if (req.method === "PUT" && url.startsWith("/api/documents/")) return true;
+  if (url.endsWith("/close")) return true;
+  return false;
+};
+
 // General API rate limiter
 const apiLimiter = rateLimit({
   windowMs: authConfig.rateLimit.windowMs,
   max: authConfig.rateLimit.maxRequests,
+  skip: isExempt,
   message: {
     success: false,
     error: {
@@ -31,6 +46,7 @@ const apiLimiter = rateLimit({
 const authLimiter = rateLimit({
   windowMs: authConfig.rateLimit.windowMs,
   max: authConfig.rateLimit.authMaxRequests,
+  skip: isExempt,
   message: {
     success: false,
     error: {
@@ -50,14 +66,13 @@ const authLimiter = rateLimit({
       },
     });
   },
-  skipSuccessfulRequests: false,
-  keyGenerator: (req) => req.ip,
 });
 
 // Specific limiter for login attempts
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // 5 attempts per 15 minutes
+  skip: isExempt,
   message: {
     success: false,
     error: {
@@ -84,6 +99,7 @@ const loginLimiter = rateLimit({
 const passwordResetLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 3, // 3 requests per hour
+  skip: isExempt,
   message: {
     success: false,
     error: {
@@ -110,6 +126,7 @@ const passwordResetLimiter = rateLimit({
 const verificationResendLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 3, // 3 requests per hour
+  skip: isExempt,
   message: {
     success: false,
     error: {
