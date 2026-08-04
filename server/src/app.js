@@ -23,7 +23,28 @@ const app = express();
 // Trust proxy for rate limiting behind reverse proxy
 app.set("trust proxy", 1);
 
-// Security middleware
+// Allowed origins come from CLIENT_URL (comma-separated list supported).
+// Render preview deployments are auto-allowed in production so newly created
+// service URLs work without manual dashboard edits.
+const getAllowedOrigins = () =>
+  (process.env.CLIENT_URL || "http://localhost:5173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+const isAllowedOrigin = (origin) => {
+  if (getAllowedOrigins().includes(origin)) return true;
+  if (
+    process.env.NODE_ENV === "production" &&
+    /^https:\/\/[a-z0-9-]+\.onrender\.com$/.test(origin)
+  ) {
+    return true;
+  }
+  return false;
+};
+
+const allowedOrigins = getAllowedOrigins();
+
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -32,7 +53,7 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", process.env.CLIENT_URL || "http://localhost:5173"],
+        connectSrc: ["'self'", ...allowedOrigins, "https://*.onrender.com"],
         fontSrc: ["'self'"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'"],
@@ -48,9 +69,15 @@ app.use(
   })
 );
 
-// CORS configuration
+// CORS configuration.
+// Allowed origins come from CLIENT_URL (comma-separated list supported).
+// Render preview deployments are auto-allowed in production so newly created
+// service URLs work without manual dashboard edits.
 const corsOptions = {
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  origin: (origin, callback) => {
+    if (!origin || isAllowedOrigin(origin)) return callback(null, true);
+    return callback(new Error("Origin not allowed by CORS"));
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
