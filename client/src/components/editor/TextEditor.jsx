@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { generateJSON } from "@tiptap/core";
 
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -9,6 +10,7 @@ import Collaboration from "@tiptap/extension-collaboration";
 import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import * as Y from "yjs";
 import { SocketIOProvider } from "y-socket.io";
+import { prosemirrorJSONToYXmlFragment } from "y-prosemirror";
 
 import { PageBreak } from "./extensions/PageBreak";
 import EditorToolbar from "./EditorToolbar";
@@ -38,6 +40,27 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
 
 const getAccessToken = () => localStorage.getItem("accessToken") || "";
 
+// Schema-defining extensions (no collaboration plugins) shared by the editor
+// and by generateJSON, so seeded content matches the editor schema exactly.
+const contentExtensions = [
+  StarterKit.configure({
+    history: false,
+    heading: { levels: [1, 2, 3] },
+    bulletList: { keepMarks: true, keepAttributes: false },
+    orderedList: { keepMarks: true, keepAttributes: false },
+  }),
+  Underline,
+  Link.configure({
+    openOnClick: false,
+    autolink: true,
+    linkOnPaste: true,
+  }),
+  TextAlign.configure({
+    types: ["heading", "paragraph"],
+  }),
+  PageBreak,
+];
+
 const TextEditor = ({
   content,
   setContent,
@@ -52,7 +75,6 @@ const TextEditor = ({
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
   const [ydoc] = useState(() => new Y.Doc());
-  const initialContentApplied = useRef(false);
   const typingTimerRef = useRef(null);
   const userColor = useMemo(() => getColorFromName(userName), [userName]);
 
@@ -117,26 +139,7 @@ const TextEditor = ({
     {
       editable: !isReadOnly,
       extensions: [
-        StarterKit.configure({
-          history: false,
-          heading: { levels: [1, 2, 3] },
-          bulletList: { keepMarks: true, keepAttributes: false },
-          orderedList: { keepMarks: true, keepAttributes: false },
-        }),
-
-        Underline,
-
-        Link.configure({
-          openOnClick: false,
-          autolink: true,
-          linkOnPaste: true,
-        }),
-
-        TextAlign.configure({
-          types: ["heading", "paragraph"],
-        }),
-
-        PageBreak,
+        ...contentExtensions,
 
         Collaboration.configure({
           document: ydoc,
@@ -170,7 +173,7 @@ const TextEditor = ({
         setCharCount(text.length);
       },
     },
-    [provider, userName, userColor, ydoc, isReadOnly]
+    [provider, ydoc]
   );
 
   useEffect(() => {
@@ -211,34 +214,41 @@ const TextEditor = ({
     };
   }, [editor, provider, isReadOnly]);
 
+  // Seed the collaborative Yjs room with the document content fetched from the
+  // server whenever the room is empty. Inserting directly into the Yjs fragment
+  // (instead of editor.commands.setContent) is what the collaboration plugin
+  // expects, and it survives the editor lifecycle.
+  const seedCollaborativeContent = useCallback(() => {
+    if (!editor || !content) return;
+
+    const fragment = ydoc.getXmlFragment("default");
+    if (fragment.length > 0) return; // room already has content
+
+    try {
+      const json = generateJSON(content, contentExtensions);
+      if (json?.content?.length) {
+        prosemirrorJSONToYXmlFragment(editor.schema, json, fragment);
+      }
+    } catch (err) {
+      console.warn("Failed to seed collaborative content:", err);
+      editor.commands.setContent(content, false);
+    }
+  }, [editor, content, ydoc]);
+
   useEffect(() => {
     if (!editor) return;
 
-    const seedInitialContent = () => {
-      if (initialContentApplied.current) return;
-
-      const fragment = ydoc.getXmlFragment("default");
-      if (fragment.length === 0 && content) {
-        editor.commands.setContent(content, false);
-        initialContentApplied.current = true;
-      }
-    };
-
     const onSync = (isSynced) => {
-      if (isSynced) seedInitialContent();
+      if (isSynced) seedCollaborativeContent();
     };
 
     provider.on("sync", onSync);
-    if (provider.synced) seedInitialContent();
+    if (provider.synced) seedCollaborativeContent();
 
     return () => {
       provider.off("sync", onSync);
     };
-  }, [provider, editor, content, ydoc]);
-
-  useEffect(() => {
-    initialContentApplied.current = false;
-  }, [documentId]);
+  }, [provider, editor, content, ydoc, seedCollaborativeContent]);
 
   if (!editor) return null;
 
