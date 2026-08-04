@@ -8,6 +8,7 @@ import ErrorBoundary from "./components/common/ErrorBoundary";
 import { AuthProvider } from "./context/AuthContext";
 import { DocumentProvider } from "./context/DocumentContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { NotificationProvider } from "./context/NotificationContext";
 
 import "./index.css";
 
@@ -19,7 +20,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <ThemeProvider>
             <AuthProvider>
               <DocumentProvider>
-                <App />
+                <NotificationProvider>
+                  <App />
+                </NotificationProvider>
               </DocumentProvider>
             </AuthProvider>
           </ThemeProvider>

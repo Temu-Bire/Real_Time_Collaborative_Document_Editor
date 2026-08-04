@@ -14,6 +14,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import UserAvatar from "./UserAvatar";
 import UserProfileModal from "./UserProfileModal";
+import NotificationBell from "../notifications/NotificationBell";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -78,6 +79,9 @@ const Navbar = () => {
               {renderThemeIcon()}
               <span className="capitalize hidden sm:inline">{isDark ? "Light" : "Dark"}</span>
             </button>
+
+            {/* Notifications */}
+            {user && <NotificationBell />}
 
             {/* User Dropdown Menu */}
             {user && (

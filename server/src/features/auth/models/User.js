@@ -121,10 +121,7 @@ userSchema.virtual("isLocked").get(function () {
   return !!(this.lockUntil && this.lockUntil > Date.now());
 });
 
-// Indexes
-// Note: unique: true on email and googleId already creates indexes
-// userSchema.index({ email: 1 });  // Created by unique: true
-// userSchema.index({ googleId: 1 });  // Created by unique: true
+
 userSchema.index({ refreshToken: 1 });
 
 module.exports = mongoose.model("User", userSchema);

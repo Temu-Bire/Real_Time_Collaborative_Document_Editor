@@ -46,12 +46,14 @@ const TextEditor = ({
   userId,
   isReadOnly = false,
   onPresenceChange,
+  editorRef,
 }) => {
   const [pageCount] = useState(1);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
   const [ydoc] = useState(() => new Y.Doc());
   const initialContentApplied = useRef(false);
+  const typingTimerRef = useRef(null);
   const userColor = useMemo(() => getColorFromName(userName), [userName]);
 
   const provider = useMemo(
@@ -81,16 +83,20 @@ const TextEditor = ({
     const updatePresence = () => {
       const states = provider.awareness.getStates();
       const userMap = new Map();
+      const now = Date.now();
 
       states.forEach((state, clientId) => {
         if (state?.user?.name) {
           const key = state.user.id || state.user.name;
+          const isTyping =
+            !!state.typing?.at && now - state.typing.at < 3000;
           if (!userMap.has(key)) {
             userMap.set(key, {
               clientId,
               id: key,
               name: state.user.name,
               color: state.user.color,
+              typing: isTyping,
             });
           }
         }
@@ -172,6 +178,38 @@ const TextEditor = ({
       editor.setEditable(!isReadOnly);
     }
   }, [editor, isReadOnly]);
+
+  useEffect(() => {
+    if (editorRef) editorRef.current = editor;
+  }, [editor, editorRef]);
+
+  // Typing indicator: broadcast a timestamped "typing" flag over the Yjs
+  // awareness channel so other collaborators can see who is actively editing.
+  useEffect(() => {
+    if (!editor || isReadOnly) return;
+
+    const dom = editor.view.dom;
+
+    const markTyping = () => {
+      provider.awareness.setLocalStateField("typing", { at: Date.now() });
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        provider.awareness.setLocalStateField("typing", null);
+      }, 1600);
+    };
+
+    dom.addEventListener("beforeinput", markTyping);
+    dom.addEventListener("keydown", markTyping);
+    dom.addEventListener("input", markTyping);
+
+    return () => {
+      clearTimeout(typingTimerRef.current);
+      provider.awareness.setLocalStateField("typing", null);
+      dom.removeEventListener("beforeinput", markTyping);
+      dom.removeEventListener("keydown", markTyping);
+      dom.removeEventListener("input", markTyping);
+    };
+  }, [editor, provider, isReadOnly]);
 
   useEffect(() => {
     if (!editor) return;

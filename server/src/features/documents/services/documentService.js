@@ -2,6 +2,7 @@ const Document = require("../models/Document");
 const DocumentVersion = require("../models/DocumentVersion");
 const Comment = require("../../comments/models/Comment");
 const versionService = require("./versionService");
+const notificationService = require("../../notifications/services/notificationService");
 const { getDocumentUserRole } = require("../../../shared/middleware/permissionMiddleware");
 const { asyncHandler, buildPaginationResponse } = require("../../../shared/utils");
 const { logger } = require("../../../shared/utils/logger");
@@ -208,7 +209,7 @@ const documentService = {
     await DocumentVersion.deleteMany({ document: documentId });
     return Document.findByIdAndDelete(documentId).lean();
   },
-  async addCollaborator(documentId, targetEmail, role) {
+  async addCollaborator(documentId, targetEmail, role, actorId = null) {
 
     const User = require("../../auth/models/User");
     const targetUser = await User.findOne({ email: targetEmail.toLowerCase().trim() });
@@ -236,13 +237,26 @@ const documentService = {
     }
 
     await document.save();
+
+    // Notify the newly added collaborator (fire and forget)
+    notificationService
+      .create({
+        recipientId: targetUser._id,
+        actorId: actorId || document.owner,
+        type: "document_shared",
+        documentId: document._id,
+        title: document.title || "Untitled Document",
+        message: `shared "${document.title || "Untitled Document"}" with you as ${role}`,
+      })
+      .catch((err) => logger.warn({ error: err.message }, "Failed to notify collaborator"));
+
     return Document.findById(documentId)
       .populate("owner", "name email profilePicture")
       .populate("collaborators.user", "name email profilePicture")
       .lean();
   },
 
-  async updateCollaboratorRole(documentId, collaboratorUserId, newRole) {
+  async updateCollaboratorRole(documentId, collaboratorUserId, newRole, actorId = null) {
     const document = await Document.findById(documentId);
     if (!document) throw new Error("Document not found");
 
@@ -254,6 +268,18 @@ const documentService = {
 
     collaborator.role = newRole;
     await document.save();
+
+    // Notify the collaborator of their new role (fire and forget)
+    notificationService
+      .create({
+        recipientId: collaboratorUserId,
+        actorId: actorId || document.owner,
+        type: "role_changed",
+        documentId: document._id,
+        title: document.title || "Untitled Document",
+        message: `updated your role on "${document.title || "Untitled Document"}" to ${newRole}`,
+      })
+      .catch((err) => logger.warn({ error: err.message }, "Failed to notify role change"));
 
     return Document.findById(documentId)
       .populate("owner", "name email profilePicture")
@@ -329,6 +355,50 @@ const documentService = {
     }
 
     const comment = await Comment.create(commentData);
+
+    // Notify the document owner and (for replies) the parent comment author.
+    // Fire and forget - notification failures must not break commenting.
+    (async () => {
+      try {
+        const document = await Document.findById(documentId).lean();
+        if (!document) return;
+
+        const recipients = new Set();
+        let parentAuthorId = null;
+
+        if (parentCommentId) {
+          const parent = await Comment.findById(parentCommentId).select("author").lean();
+          if (parent) parentAuthorId = parent.author.toString();
+        }
+
+        if (parentAuthorId && parentAuthorId !== authorId.toString()) {
+          recipients.add(parentAuthorId);
+        }
+
+        const ownerId = document.owner.toString();
+        if (ownerId !== authorId.toString()) {
+          recipients.add(ownerId);
+        }
+
+        const docTitle = document.title || "Untitled Document";
+
+        for (const recipientId of recipients) {
+          const isReply = recipientId === parentAuthorId;
+          await notificationService.create({
+            recipientId,
+            actorId: authorId,
+            type: isReply ? "reply" : "comment",
+            documentId,
+            title: docTitle,
+            message: isReply
+              ? `replied to your comment on "${docTitle}"`
+              : `commented on "${docTitle}"`,
+          });
+        }
+      } catch (err) {
+        logger.warn({ error: err.message, documentId }, "Failed to create comment notifications");
+      }
+    })();
 
     return Comment.findById(comment._id)
       .populate("author", "name email profilePicture")

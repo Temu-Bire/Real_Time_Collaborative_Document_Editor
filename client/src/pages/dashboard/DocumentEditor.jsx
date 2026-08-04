@@ -16,6 +16,9 @@ import {
 import TextEditor from "../../components/editor/TextEditor";
 import EditableTitle from "../../components/editor/EditableTitle";
 import PresencePanel from "../../components/editor/PresencePanel";
+import FileMenu from "../../components/editor/FileMenu";
+import FindBar from "../../components/editor/FindBar";
+import ShortcutsHelpModal from "../../components/editor/ShortcutsHelpModal";
 import ShareModal from "../../components/documents/ShareModal";
 import CommentsDrawer from "../../components/editor/CommentsDrawer";
 import VersionHistoryDrawer from "../../components/editor/VersionHistoryDrawer";
@@ -26,6 +29,12 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useDocuments } from "../../context/DocumentContext";
 import { getErrorMessage } from "../../utils/getErrorMessage";
+import {
+  htmlToMarkdown,
+  markdownToHtml,
+  slugify,
+  downloadFile,
+} from "../../utils/markdown";
 
 const DocumentEditor = () => {
   const { id } = useParams();
@@ -65,6 +74,12 @@ const DocumentEditor = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isCommentsDrawerOpen, setIsCommentsDrawerOpen] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [isFindOpen, setIsFindOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [importError, setImportError] = useState("");
+
+  const editorRef = useRef(null);
+  const markdownInputRef = useRef(null);
 
   const isInitialLoad = useRef(true);
   const contentRef = useRef(content);
@@ -202,6 +217,103 @@ const DocumentEditor = () => {
     setDocumentData(updated);
   };
 
+  const handleExportPdf = () => {
+    window.print();
+  };
+
+  const handleExportMarkdown = () => {
+    const html = editorRef.current?.getHTML() ?? content;
+    const markdown = htmlToMarkdown(html);
+    downloadFile(`${slugify(title)}.md`, markdown, "text/markdown");
+  };
+
+  const handleImportMarkdown = () => {
+    markdownInputRef.current?.click();
+  };
+
+  const handleImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setImportError("");
+
+    try {
+      const text = await file.text();
+      const html = markdownToHtml(text);
+      if (!editorRef.current) return;
+      editorRef.current.commands.setContent(html, true);
+      setContent(html);
+      saveDocument(title, html, "Imported Markdown");
+    } catch (err) {
+      setImportError(getErrorMessage(err, "Failed to import Markdown file."));
+    }
+  };
+
+  const handleFindOpen = () => {
+    setIsFindOpen(true);
+  };
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handler = (e) => {
+      const mod = e.ctrlKey || e.metaKey;
+      const tag = (document.activeElement?.tagName || "").toLowerCase();
+      const inEditable =
+        tag === "input" ||
+        tag === "textarea" ||
+        document.activeElement?.isContentEditable;
+
+      if (mod && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (!isReadOnly) saveDocument();
+        return;
+      }
+
+      if (mod && e.key.toLowerCase() === "p") {
+        if (!inEditable) {
+          e.preventDefault();
+          handleExportPdf();
+        }
+        return;
+      }
+
+      if (mod && e.shiftKey && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        handleExportMarkdown();
+        return;
+      }
+
+      if (mod && e.shiftKey && e.key.toLowerCase() === "i") {
+        e.preventDefault();
+        handleImportMarkdown();
+        return;
+      }
+
+      if (mod && e.key.toLowerCase() === "f") {
+        if (!inEditable) {
+          e.preventDefault();
+          handleFindOpen();
+        }
+        return;
+      }
+
+      if (mod && e.key === "/") {
+        e.preventDefault();
+        setIsShortcutsOpen((prev) => !prev);
+        return;
+      }
+
+      if (e.key === "Escape") {
+        setIsFindOpen(false);
+        setIsShareModalOpen(false);
+        setIsShortcutsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  });
+
   const renderRoleBadge = () => {
     switch (userRole) {
       case "Owner":
@@ -325,6 +437,17 @@ const DocumentEditor = () => {
               </div>
             )}
 
+            {/* File menu: save / export / import / find / shortcuts */}
+            <FileMenu
+              onSave={() => saveDocument()}
+              onExportPdf={handleExportPdf}
+              onExportMarkdown={handleExportMarkdown}
+              onImportMarkdown={handleImportMarkdown}
+              onFind={handleFindOpen}
+              onShowShortcuts={() => setIsShortcutsOpen(true)}
+              canEdit={!isReadOnly}
+            />
+
             {/* Share button */}
             <button
               type="button"
@@ -378,7 +501,7 @@ const DocumentEditor = () => {
       )}
 
       {/* Main Canvas Container */}
-      <main className="flex-1 w-full overflow-y-auto px-4 py-6 flex justify-center">
+      <main className="flex-1 w-full overflow-y-auto px-4 py-6 flex justify-center relative">
         <TextEditor
           key={id}
           content={content}
@@ -388,6 +511,13 @@ const DocumentEditor = () => {
           userId={user?.id || user?._id}
           isReadOnly={isReadOnly}
           onPresenceChange={handlePresenceChange}
+          editorRef={editorRef}
+        />
+
+        <FindBar
+          editorRef={editorRef}
+          isOpen={isFindOpen}
+          onClose={() => setIsFindOpen(false)}
         />
       </main>
 
@@ -422,6 +552,25 @@ const DocumentEditor = () => {
         userRole={userRole}
         getDocumentVersions={getDocumentVersions}
         restoreDocumentVersion={restoreDocumentVersion}
+      />
+
+      {importError && (
+        <div className="fixed bottom-4 right-4 z-[60]">
+          <ErrorAlert message={importError} onDismiss={() => setImportError("")} />
+        </div>
+      )}
+
+      <ShortcutsHelpModal
+        isOpen={isShortcutsOpen}
+        onClose={() => setIsShortcutsOpen(false)}
+      />
+
+      <input
+        ref={markdownInputRef}
+        type="file"
+        accept=".md,.markdown,text/markdown"
+        className="hidden"
+        onChange={handleImportFile}
       />
     </div>
   );

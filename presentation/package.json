@@ -1,0 +1,12 @@
+{
+  "name": "syncwrite-presentation",
+  "private": true,
+  "version": "1.0.0",
+  "type": "commonjs",
+  "scripts": {
+    "generate": "node generate.js"
+  },
+  "dependencies": {
+    "pptxgenjs": "^4.0.1"
+  }
+}

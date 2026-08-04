@@ -41,6 +41,18 @@ Every document stores: title, owner, date created, last modified.
 ### Presence awareness
 - See who is currently viewing the document (names, avatars, online status)
 - Live cursor positions and active editing locations (bonus)
+- **Typing indicators**: see who is actively typing, with animated dots
+
+### Keyboard shortcuts
+- `Ctrl/Cmd + S` save now · `Ctrl/Cmd + P` export PDF · `Ctrl/Cmd + Shift + E`
+  export Markdown · `Ctrl/Cmd + Shift + I` import Markdown · `Ctrl/Cmd + F`
+  find in document · `Ctrl/Cmd + /` shortcuts help · `Mod + Enter` page break
+- In-editor **find bar** with match counting and next/previous navigation
+
+### Export & import
+- Export document to **PDF** (print-optimized A4 layout)
+- Export to **Markdown** (`.md` download)
+- Import a **Markdown** file directly into the editor
 
 ### Auto-save
 - No save button — changes persist automatically (2s debounce) and on close
@@ -58,6 +70,12 @@ Every document stores: title, owner, date created, last modified.
 - Share by email with roles: **Viewer**, **Commenter**, **Editor**
 - Owner-only share management; permission enforced on every REST route and on
   the real-time WebSocket layer
+
+### Notifications
+- In-app **notification bell** with unread badge
+- Real-time push over Socket.IO (with periodic polling fallback)
+- Alerts for: document shared with you, role changes, new comments, and replies
+  to your comments
 
 ---
 

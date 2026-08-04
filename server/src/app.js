@@ -81,11 +81,13 @@ const authRoutes = require("./features/auth/routes/authRoutes");
 const userRoutes = require("./features/users/routes/userRoutes");
 const documentRoutes = require("./features/documents/routes/documentRoutes");
 const commentRoutes = require("./features/comments/routes/commentRoutes");
+const notificationRoutes = require("./features/notifications/routes/notificationRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/documents", commentRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Health check
 app.get("/api/health", (_req, res) => {

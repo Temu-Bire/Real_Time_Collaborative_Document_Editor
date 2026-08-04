@@ -116,7 +116,8 @@ const documentController = {
       const document = await documentService.addCollaborator(
         req.params.id,
         email,
-        role
+        role,
+        req.user.userId
       );
       // Return { document } so client can access response.document
       res.status(200).json({ document });
@@ -148,7 +149,8 @@ const documentController = {
     const document = await documentService.updateCollaboratorRole(
       req.params.id,
       collaboratorId,
-      role
+      role,
+      req.user.userId
     );
 
     // Return { document } so client can access response.document

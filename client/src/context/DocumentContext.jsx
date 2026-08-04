@@ -156,10 +156,10 @@ export const DocumentProvider = ({ children }) => {
     return normalizeDocument(response.document);
   };
 
-  const getComments = async (id) => {
+  const getComments = useCallback(async (id) => {
     const response = await documentService.getComments(id);
     return response.comments || [];
-  };
+  }, []);
 
   const addComment = async (id, content, parentCommentId = null) => {
     const response = await documentService.addComment(id, content, parentCommentId);

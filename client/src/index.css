@@ -297,3 +297,117 @@ body {
 .document-page-body .ProseMirror-selectednode {
   outline: 2px solid var(--editor-selection-outline);
 }
+
+/* Typing indicator */
+.typing-dots .typing-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: #f59e0b;
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+
+.typing-dots .typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dots .typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+.typing-pulse {
+  animation: typing-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes typing-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0);
+  }
+}
+
+/* Print / PDF export: show only the editable content, hide the chrome */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  header,
+  aside,
+  nav,
+  .editor-toolbar,
+  .editor-stats,
+  .find-bar,
+  .share-modal,
+  .comments-drawer,
+  .version-drawer,
+  .shortcuts-modal,
+  .document-page-footer {
+    display: none !important;
+  }
+
+  .document-canvas {
+    width: 100% !important;
+  }
+
+  .document-pages {
+    display: block !important;
+    gap: 0 !important;
+  }
+
+  .document-page {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+
+  .document-page-body {
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  .document-page-body > div {
+    height: auto !important;
+  }
+
+  .document-page-body .ProseMirror {
+    height: auto !important;
+  }
+
+  .document-page-body .ProseMirror p {
+    break-inside: avoid;
+  }
+
+  .document-page-body .ProseMirror .collaboration-carets__caret,
+  .document-page-body .ProseMirror .collaboration-carets__label,
+  .document-page-body .ProseMirror .page-break::after {
+    display: none !important;
+  }
+}
