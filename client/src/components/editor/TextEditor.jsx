@@ -220,8 +220,8 @@ const TextEditor = ({
       const fragment = ydoc.getXmlFragment("default");
       if (fragment.length === 0 && content) {
         editor.commands.setContent(content, false);
+        initialContentApplied.current = true;
       }
-      initialContentApplied.current = true;
     };
 
     const onSync = (isSynced) => {
